@@ -97,7 +97,10 @@ auth.onAuthStateChanged(async u=>{
 $('go').onclick=async()=>{
   $('lerr').textContent='';
   try{await auth.signInWithEmailAndPassword($('em').value.trim(),$('pw').value)}
-  catch(e){$('lerr').textContent='Wrong email or password.'}
+  catch(e){
+    const bad=['auth/wrong-password','auth/user-not-found','auth/invalid-credential','auth/invalid-email'].includes(e.code);
+    $('lerr').textContent=(bad?'Wrong email or password.':'Sign-in problem.')+' ('+e.code+')';
+  }
 };
 $('out').onclick=$('out2').onclick=()=>auth.signOut();
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{if(b.dataset.t!=='add')reset();tab(b.dataset.t)});

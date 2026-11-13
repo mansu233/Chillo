@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2BB5E8">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg">
+<title>Chillo</title>
+<style>
+:root{--blue:#2BB5E8;--ink:#0F3B52;--pink:#FF7BAC;--bg:#F2F9FC;--line:#D3E8F0;--bad:#C0392B}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--blue);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:22px}
+main{padding:16px;max-width:520px;margin:0 auto 90px}
+.hidden{display:none!important}
+input,select,button{font:inherit;width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);margin:4px 0 12px}
+button{background:var(--ink);color:#fff;border:0;font-weight:600}
+button.alt{background:#fff;color:var(--ink);border:1px solid var(--line)}
+label{font-size:14px;font-weight:600}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{margin:0;border-radius:0;background:none;color:var(--ink);opacity:.6;padding:14px 4px}
+nav button.on{opacity:1;box-shadow:inset 0 3px 0 var(--pink)}
+.big{font-size:40px;font-weight:700;margin-bottom:8px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.bar{height:10px;background:var(--line);border-radius:5px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--pink)}
+.muted{opacity:.65;font-size:14px}.err{color:var(--bad);font-size:14px;min-height:18px}
+a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
+</style></head><body>
+
+<div id="login" class="hidden"><main>
+<h1>Chillo</h1><p class="muted">Sign in to log your sales.</p>
+<label>Email</label><input id="em" type="email" autocomplete="username">
+<label>Password</label><input id="pw" type="password" inputmode="numeric" autocomplete="current-password">
+<div class="err" id="lerr"></div><button id="go">Sign in</button></main></div>
+
+<div id="wait" class="hidden"><main><h1>Waiting for admin access</h1>
+<p>Your account has no access yet. Ask your admin to switch it on.</p>
+<button class="alt" id="out">Sign out</button></main></div>
+
+<div id="app" class="hidden">
+<header><span>Chillo</span><span id="who" style="font-size:14px;font-weight:500"></span></header>
+<main>
+<section id="home"></section>
+<section id="add" class="hidden"><h2>Daily sale</h2>
+<label>Date</label><input id="date" type="date">
+<label>Total sale (cash collected, SAR)</label><input id="amt" type="number" inputmode="decimal">
+<label>Area</label><select id="area"></select>
+<label>Note (optional)</label><input id="note">
+<div class="err" id="aerr"></div><button id="save">Save sale</button></section>
+<section id="set" class="hidden"><h2>Settings</h2>
+<label>Monthly target (SAR)</label><input id="tg" type="number" inputmode="decimal">
+<button id="stg" class="alt">Save target</button>
+<label>My areas</label><div id="arl"></div>
+<input id="na" placeholder="New area, for example Jeddah"><button id="aa" class="alt">Add area</button>
+<label>New 6-digit password</label><input id="np" type="password" inputmode="numeric" maxlength="6">
+<div class="err" id="pmsg"></div><button id="cp" class="alt">Change password</button>
+<button id="out2">Sign out</button></section>
+</main>
+<nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button></nav>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+// 1) Paste your Firebase web app config here (Project settings > Your apps)
+const CFG={apiKey:"YOUR_API_KEY",authDomain:"YOUR_PROJECT.firebaseapp.com",projectId:"YOUR_PROJECT",appId:"YOUR_APP_ID"};
+
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n||0).toLocaleString('en',{maximumFractionDigits:0});
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let me=null,uid=null,entries=[],editId=null,unsub=null;
+
+firebase.initializeApp(CFG);
+const auth=firebase.auth(),db=firebase.firestore();
+db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+const userDoc=()=>db.collection('users').doc(uid);
+const sales=()=>userDoc().collection('sales');
+
+function show(id){['login','wait','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
+function tab(t){
+  ['home','add','set'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+}
+function reset(){editId=null;$('amt').value='';$('note').value='';$('aerr').textContent='';$('date').value=ymd(new Date());$('save').textContent='Save sale'}
+
+auth.onAuthStateChanged(async u=>{
+  if(!u){show('login');return}
+  uid=u.uid;
+  try{const s=await userDoc().get();me=s.exists?s.data():null}catch(e){me=null}
+  if(!me||me.active===false){show('wait');return}
+  me.areas=me.areas||[];
+  show('app');$('who').textContent=me.name||u.email;start();
+});
+
+$('go').onclick=async()=>{
+  $('lerr').textContent='';
+  try{await auth.signInWithEmailAndPassword($('em').value.trim(),$('pw').value)}
+  catch(e){$('lerr').textContent='Wrong email or password.'}
+};
+$('out').onclick=$('out2').onclick=()=>auth.signOut();
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{if(b.dataset.t!=='add')reset();tab(b.dataset.t)});
+
+function start(){
+  const n=new Date(),a=ymd(new Date(n.getFullYear(),n.getMonth(),1)),b=ymd(new Date(n.getFullYear(),n.getMonth()+1,0));
+  unsub&&unsub();
+  unsub=sales().where('date','>=',a).where('date','<=',b).orderBy('date','desc')
+    .onSnapshot(s=>{entries=s.docs.map(d=>({id:d.id,...d.data()}));render()});
+  reset();$('tg').value=me.target||'';fillAreas();
+}
+
+function render(){
+  const n=new Date(),y=n.getFullYear(),m=n.getMonth(),dim=new Date(y,m+1,0).getDate();
+  let work=0,done=0;
+  for(let d=1;d<=dim;d++){ if(new Date(y,m,d).getDay()!==5){work++;if(d<=n.getDate())done++} } // Friday = holiday
+  const left=work-done,elapsed=Math.max(done,1);
+  const total=entries.reduce((s,e)=>s+e.amount,0),avg=total/elapsed,proj=avg*work;
+  const target=me.target||0,pct=target?Math.round(total/target*100):0;
+  const need=target&&left>0?Math.max(0,(target-total)/left):0;
+  const byArea={};entries.forEach(e=>{const k=e.area||'No area';byArea[k]=(byArea[k]||0)+e.amount});
+  $('home').innerHTML=
+   `<div class="muted">${n.toLocaleString('en',{month:'long',year:'numeric'})}</div>
+    <div class="big">${fmt(total)} SAR</div>
+    <div class="row"><span>Daily average</span><b>${fmt(avg)}</b></div>
+    <div class="row"><span>Expected month-end</span><b>${fmt(proj)}</b></div>
+    <div class="row"><span>Working days left</span><b>${left}</b></div>`+
+   (target?`<div class="row"><span>Target ${fmt(target)}</span><b>${pct}%</b></div>
+    <div class="bar"><i style="width:${Math.min(pct,100)}%"></i></div>
+    <div class="muted">Need ${fmt(need)} per working day to reach it</div>`:'')+
+   `<h3>By area</h3>`+(Object.keys(byArea).map(k=>`<div class="row"><span>${esc(k)}</span><b>${fmt(byArea[k])}</b></div>`).join('')||'<div class="muted">No sales yet this month.</div>')+
+   `<h3>Entries</h3>`+entries.map(e=>`<div class="row"><span>${e.date}<br><span class="muted">${esc(e.area||'No area')}${e.note?', '+esc(e.note):''}</span></span>
+    <span><b>${fmt(e.amount)}</b><a data-e="${e.id}">Edit</a><a data-d="${e.id}">Delete</a></span></div>`).join('');
+}
+$('home').onclick=ev=>{
+  const t=ev.target,e=entries.find(x=>x.id===t.dataset.e);
+  if(e){editId=e.id;$('date').value=e.date;$('amt').value=e.amount;$('area').value=e.area||'';$('note').value=e.note||'';$('save').textContent='Update sale';tab('add')}
+  if(t.dataset.d&&confirm('Delete this sale entry?'))sales().doc(t.dataset.d).delete().catch(x=>alert(x.message));
+};
+
+$('save').onclick=()=>{
+  const amount=parseFloat($('amt').value),date=$('date').value;
+  if(!date||$('amt').value===''||!(amount>=0)){$('aerr').textContent='Enter the date and the amount.';return}
+  const data={date,amount,area:$('area').value,note:$('note').value.trim()};
+  (editId?sales().doc(editId).update(data):sales().add({...data,ts:firebase.firestore.FieldValue.serverTimestamp()}))
+    .catch(x=>alert('Could not save: '+x.message));
+  reset();tab('home');
+};
+
+function fillAreas(){
+  $('area').innerHTML=me.areas.length?me.areas.map(a=>`<option>${esc(a)}</option>`).join(''):'<option value="">Add areas in Settings</option>';
+  $('arl').innerHTML=me.areas.map((a,i)=>`<div class="row"><span>${esc(a)}</span><a data-r="${i}">Remove</a></div>`).join('')||'<div class="muted">No areas yet.</div>';
+}
+const saveAreas=()=>{userDoc().update({areas:me.areas}).catch(x=>alert(x.message));fillAreas()};
+$('aa').onclick=()=>{const v=$('na').value.trim();if(v&&!me.areas.includes(v)){me.areas.push(v);$('na').value='';saveAreas()}};
+$('arl').onclick=e=>{if(e.target.dataset.r!==undefined){me.areas.splice(+e.target.dataset.r,1);saveAreas()}};
+$('stg').onclick=()=>{me.target=parseFloat($('tg').value)||0;userDoc().update({target:me.target}).catch(x=>alert(x.message));render();tab('home')};
+
+$('cp').onclick=async()=>{
+  const p=$('np').value,easy=/^(\d)\1+$/.test(p)||['123456','654321','012345','123123','112233','121212','123321','234567','345678','456789','567890','987654'].includes(p);
+  if(!/^\d{6}$/.test(p)){$('pmsg').textContent='Use exactly 6 digits.';return}
+  if(easy){$('pmsg').textContent='Avoid easy codes like 123456 or 000000.';return}
+  try{await auth.currentUser.updatePassword(p);$('pmsg').textContent='Password changed.';$('np').value=''}
+  catch(e){$('pmsg').textContent='Sign out, sign in again, then retry.'}
+};
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>

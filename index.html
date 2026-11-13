@@ -17,6 +17,7 @@ button.alt{background:#fff;color:var(--ink);border:1px solid var(--line)}
 label{font-size:14px;font-weight:600}
 nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 nav button{margin:0;border-radius:0;background:none;color:var(--ink);opacity:.6;padding:14px 4px}
+nav button{font-size:14px}
 nav button.on{opacity:1;box-shadow:inset 0 3px 0 var(--pink)}
 .big{font-size:40px;font-weight:700;margin-bottom:8px}
 .row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -48,6 +49,7 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 <label>Note (optional)</label><input id="note">
 <div class="err" id="aerr"></div><button id="save">Save sale</button></section>
 <section id="mem" class="hidden"></section>
+<section id="prod" class="hidden"></section>
 <section id="set" class="hidden"><h2>Settings</h2>
 <div id="tgbox"><label>Monthly target (SAR)</label><input id="tg" type="number" inputmode="decimal">
 <button id="stg" class="alt">Save target</button></div>
@@ -57,12 +59,13 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 <div class="err" id="pmsg"></div><button id="cp" class="alt">Change password</button>
 <button id="out2">Sign out</button></section>
 </main>
-<nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button></nav>
+<nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button></nav>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // 1) Paste your Firebase web app config here (Project settings > Your apps)
 const CFG={apiKey:"AIzaSyCqCsueTJSETiVjbFE7VdNyPXUZGRMKNqU",authDomain:"chillo-765ef.firebaseapp.com",projectId:"chillo-765ef",storageBucket:"chillo-765ef.firebasestorage.app",messagingSenderId:"1062690319679",appId:"1:1062690319679:web:90dfbe472054dd8f13f78a"};
@@ -82,7 +85,7 @@ const sales=()=>userDoc().collection('sales');
 
 function show(id){['login','wait','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
 function tab(t){
-  ['home','add','set','mem'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
+  ['home','add','set','mem','prod'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
 }
 function reset(){editId=null;$('amt').value='';$('note').value='';$('aerr').textContent='';$('date').value=ymd(new Date());$('save').textContent='Save sale'}
@@ -113,7 +116,7 @@ function start(){
   unsub&&unsub();
   unsub=sales().where('date','>=',a).where('date','<=',b).orderBy('date','desc')
     .onSnapshot(s=>{entries=s.docs.map(d=>({id:d.id,...d.data()}));render()});
-  reset();$('tg').value=me.target||'';fillAreas();applyAccess();if(me.role==='admin')watchMembers();
+  reset();$('tg').value=me.target||'';fillAreas();applyAccess();if(me.role==='admin')watchMembers();if(can('prod.view'))watchProducts();
 }
 
 function render(){
@@ -173,6 +176,7 @@ $('cp').onclick=async()=>{
 
 const PERMS={
  'Sales':[['sales.add','Add daily sales'],['sales.edit','Edit sale entries'],['sales.delete','Delete sale entries'],['sales.report','See monthly report']],
+ 'Products':[['prod.view','View products'],['prod.price','View prices']],
  'Settings':[['set.target','Set own monthly target'],['set.areas','Manage own areas']]};
 const can=k=>me.role==='admin'||!!(me.perms&&me.perms[k]);
 let members=[],openId=null;
@@ -180,6 +184,7 @@ let members=[],openId=null;
 function applyAccess(){
   document.querySelector('[data-t=add]').classList.toggle('hidden',!can('sales.add'));
   $('tmem').classList.toggle('hidden',me.role!=='admin');
+  $('tprod').classList.toggle('hidden',!can('prod.view'));
   $('tgbox').classList.toggle('hidden',!can('set.target'));
   $('arbox').classList.toggle('hidden',!can('set.areas'));
 }
@@ -237,6 +242,80 @@ $('mem').onclick=async ev=>{
     const m=members.find(x=>x.id===openId);
     auth.sendPasswordResetEmail(m.email).then(()=>$('mmsg').textContent='Reset email sent to '+m.email).catch(e=>$('mmsg').textContent=e.message);
   }
+};
+
+let prods=[],pq='',pcat='',pedit=null;
+const idOf=c=>String(c).trim().replace(/\//g,'-');
+const money=n=>Number(n).toLocaleString('en',{maximumFractionDigits:2});
+function watchProducts(){
+  db.collection('products').orderBy('name').onSnapshot(s=>{prods=s.docs.map(d=>({id:d.id,...d.data()}));if(pedit===null)drawProds()},()=>{});
+}
+function drawList(){
+  const price=can('prod.price'),admin=me.role==='admin',q=pq.toLowerCase();
+  const list=prods.filter(p=>(!pcat||p.category===pcat)&&(!q||((p.name||'')+' '+(p.code||'')).toLowerCase().includes(q)));
+  $('plist').innerHTML=`<div class="muted">${list.length} products</div>`+list.map(p=>`<div class="row"><span>${esc(p.name)}<br><span class="muted">${esc(p.code)}${p.pack?', '+esc(p.pack):''}${p.category?', '+esc(p.category):''}</span></span>
+   <span>${price&&p.price!=null?'<b>'+money(p.price)+'</b>':''}${admin?'<a data-pe="'+esc(p.id)+'">Edit</a>':''}</span></div>`).join('');
+}
+function drawProds(){
+  const admin=me.role==='admin',cats=[...new Set(prods.map(p=>p.category).filter(Boolean))].sort();
+  if(pedit!==null){
+    const p=prods.find(x=>x.id===pedit)||{};
+    $('prod').innerHTML=`<h2>${pedit?'Edit product':'Add product'}</h2>
+    <label>Code</label><input id="pcode" value="${esc(p.code)}" ${pedit?'readonly':''}>
+    <label>Name</label><input id="pname" value="${esc(p.name)}">
+    <label>Pack</label><input id="ppack" value="${esc(p.pack)}" placeholder="for example 1*30*60 GM">
+    <label>Unit</label><input id="punit" value="${esc(p.unit||'Carton')}">
+    <label>Category</label><input id="pcat" list="cl" value="${esc(p.category)}"><datalist id="cl">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+    <label>Price per unit (SAR)</label><input id="pprice" type="number" inputmode="decimal" value="${p.price==null?'':p.price}">
+    <div class="err" id="pmsg2"></div><button id="psave">Save</button><button id="pcancel" class="alt">Cancel</button>${pedit?'<button id="pdel" class="alt">Delete product</button>':''}`;
+    return;
+  }
+  $('prod').innerHTML=`<h2>Products</h2><input id="pq" placeholder="Search name or code" value="${esc(pq)}">
+  <select id="pc"><option value="">All categories</option>${cats.map(c=>`<option ${c===pcat?'selected':''}>${esc(c)}</option>`).join('')}</select>`+
+  (admin?`<button id="padd">Add product</button><button id="pimp" class="alt">Import from Excel</button><button id="ptpl" class="alt">Download Excel template</button><input id="pfile" type="file" accept=".xlsx,.xls,.csv" class="hidden"><div class="err" id="pmsg2"></div>`:'')+`<div id="plist"></div>`;
+  drawList();
+}
+async function importFile(f){
+  const msg=$('pmsg2');msg.textContent='Reading file...';
+  try{
+    const wb=XLSX.read(await f.arrayBuffer()),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+    let ok=0,skip=0,n=0,batch=db.batch();
+    for(const r of rows){
+      const k={};Object.keys(r).forEach(h=>k[String(h).trim().toLowerCase()]=r[h]);
+      const code=String(k.code||'').trim(),name=String(k.name||'').trim();
+      if(!code||!name){skip++;continue}
+      const pr=parseFloat(k.price);
+      batch.set(db.collection('products').doc(idOf(code)),{code,name,pack:String(k.pack||'').trim(),unit:String(k.unit||'Carton').trim(),category:String(k.category||'').trim(),price:isNaN(pr)?null:pr},{merge:true});
+      ok++;n++;
+      if(n===400){await batch.commit();batch=db.batch();n=0}
+    }
+    if(n)await batch.commit();
+    msg.textContent='Imported '+ok+' products'+(skip?', skipped '+skip+' rows without code or name':'')+'.';
+  }catch(e){msg.textContent='Import failed: '+e.message}
+}
+function template(){
+  const ws=XLSX.utils.aoa_to_sheet([['Code','Name','Pack','Unit','Category','Price'],['FG-ICE-0001','Example Vanilla Cups','1*30*40 GM','Carton','Cups',50]]);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Products');XLSX.writeFile(wb,'chillo-products-template.xlsx');
+}
+$('prod').onclick=ev=>{
+  const t=ev.target;
+  if(t.id==='padd'){pedit='';drawProds()}
+  else if(t.dataset.pe){pedit=t.dataset.pe;drawProds()}
+  else if(t.id==='pcancel'){pedit=null;drawProds()}
+  else if(t.id==='pimp')$('pfile').click();
+  else if(t.id==='ptpl')template();
+  else if(t.id==='psave'){
+    const code=$('pcode').value.trim(),name=$('pname').value.trim(),pr=parseFloat($('pprice').value);
+    if(!code||!name){$('pmsg2').textContent='Enter the code and name.';return}
+    db.collection('products').doc(idOf(code)).set({code,name,pack:$('ppack').value.trim(),unit:$('punit').value.trim()||'Carton',category:$('pcat').value.trim(),price:isNaN(pr)?null:pr},{merge:true}).catch(e=>alert(e.message));
+    pedit=null;drawProds();
+  }
+  else if(t.id==='pdel'&&confirm('Delete this product?')){db.collection('products').doc(pedit).delete().catch(e=>alert(e.message));pedit=null;drawProds()}
+};
+$('prod').oninput=ev=>{if(ev.target.id==='pq'){pq=ev.target.value;drawList()}};
+$('prod').onchange=ev=>{
+  if(ev.target.id==='pc'){pcat=ev.target.value;drawList()}
+  if(ev.target.id==='pfile'&&ev.target.files[0]){importFile(ev.target.files[0]);ev.target.value=''}
 };
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');

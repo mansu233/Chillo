@@ -180,7 +180,7 @@ $('cp').onclick=async()=>{
 const PERMS={
  'Sales':[['sales.add','Add daily sales'],['sales.edit','Edit sale entries'],['sales.delete','Delete sale entries'],['sales.report','See monthly report']],
  'Products':[['prod.view','View products'],['prod.price','View prices']],
- 'Customers':[['cust.view','View customers and mark visits'],['cust.add','Add customers'],['cust.edit','Edit customers'],['cust.delete','Delete customers']],
+ 'Customers':[['cust.view','View customers and mark visits'],['cust.add','Add customers'],['cust.edit','Edit customers'],['cust.delete','Delete customers'],['cust.photo','Shop photo and freezer records']],
  'Settings':[['set.target','Set own monthly target'],['set.areas','Manage own areas']]};
 const can=k=>me.role==='admin'||!!(me.perms&&me.perms[k]);
 let members=[],openId=null;
@@ -369,10 +369,10 @@ function drawView(){
   <div class="row"><span>Owner</span><b>${esc(c.owner||'-')}</b></div><div class="row"><span>Phone</span><b>${esc(c.phone||'-')}</b></div>
   <div class="row"><span>Area</span><b>${esc(c.area||'-')}</b></div><div class="row"><span>Visits</span><b>${typ}</b></div>
   <div class="row"><span>Last visit</span><b>${c.lastVisit?c.lastVisit.replace('T',' '):'Never'}</b></div>
-  ${c.notes?`<div class="row"><span>Notes</span><b>${esc(c.notes)}</b></div>`:''}<p></p>
+  ${c.notes?`<div class="row"><span>Notes</span><b>${esc(c.notes)}</b></div>`:''}<div id="cph"></div><div id="cfz"></div><p></p>
   <button id="cvis">Mark visited</button>${c.type==='call'?'<button id="ccall" class="alt">Customer called, visit today</button>':''}
   ${nav?`<button class="alt" data-go="${esc(nav)}">Navigate</button>`:''}${c.phone?`<button class="alt" data-go="tel:${esc(c.phone)}">Call</button><button class="alt" data-go="https://wa.me/${String(c.phone).replace(/\D/g,'')}">WhatsApp</button>`:''}
-  ${can('cust.edit')?'<button id="cedit" class="alt">Edit</button>':''}`;
+  ${can('cust.edit')?'<button id="cedit" class="alt">Edit</button>':''}`;loadMedia(c);
 }
 function drawEdit(){
   const c=cs.find(x=>x.id===cid)||{type:'fixed',days:[]};ed={lat:c.lat??null,lng:c.lng??null,link:c.link||''};
@@ -399,8 +399,14 @@ $('cust').onclick=ev=>{
   else if(t.id==='cedit'){cmode='edit';drawEdit()}
   else if(t.id==='cvis')custs().doc(cid).update({lastVisit:stamp()}).catch(e=>alert(e.message));
   else if(t.id==='ccall')custs().doc(cid).update({calledAt:stamp()}).catch(e=>alert(e.message));
+  else if(t.id==='cshoot'||t.id==='cpick'){const c=cs.find(x=>x.id===cid);pickImage(t.id==='cshoot',d=>userDoc().collection('photos').doc(cid).set({data:d,ts:stamp()}).then(()=>loadMedia(c)).catch(e=>alert(e.message)))}
+  else if(t.id==='cfadd')showFz();
+  else if(t.id==='fzcam'||t.id==='fzgal')pickImage(t.id==='fzcam',d=>{fzPhoto=d;$('fzprev').src=d;$('fzprev').classList.remove('hidden')});
+  else if(t.id==='fzsave')saveFreezer(cs.find(x=>x.id===cid));
+  else if(t.id==='fzcancel')loadMedia(cs.find(x=>x.id===cid));
+  else if(t.dataset.fd){if(confirm('Remove this freezer record?'))db.collection('freezers').doc(idOf(t.dataset.fd)).delete().then(()=>loadMedia(cs.find(x=>x.id===cid))).catch(e=>alert(e.message))}
   else if(t.id==='cgps')getPos(p=>{ed.lat=p.lat;ed.lng=p.lng;$('cloc').textContent='GPS location captured'});
-  else if(t.id==='cdel'&&confirm('Delete this customer?')){custs().doc(cid).delete().catch(e=>alert(e.message));cid=null;cmode='list';drawCust()}
+  else if(t.id==='cdel')delCust();
   else if(t.id==='csave'){
     const name=$('cn').value.trim();if(!name){$('cmsg').textContent='Enter the shop name.';return}
     const data={name,owner:$('cow').value.trim(),phone:$('cph').value.trim(),area:$('car').value,type:$('cty').value,notes:$('cno').value.trim(),
@@ -416,6 +422,71 @@ $('cust').onchange=ev=>{
   if(i==='co2'){csort=ev.target.value;csort==='near'&&!pos?getPos(drawCList):drawCList()}
   if(i==='clk'){const l=parseLoc(ev.target.value);if(l){ed.lat=l.lat;ed.lng=l.lng;$('cloc').textContent='Location read from link'}else $('cloc').textContent=ev.target.value?'Link saved. Coordinates could not be read, so use GPS once at the shop for nearest-first.':''}
 };
+
+let fzPhoto='';
+function editPhoto(file,cb){
+  const img=new Image(),W=320,H=240;
+  img.onload=()=>{
+    let rot=0,z=1,ox=0,oy=0,d0=0,z0=1;const pts=new Map();
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px';
+    ov.innerHTML='<canvas width="320" height="240" style="touch-action:none;background:#000"></canvas><div style="color:#fff;font-size:14px">Drag to move, pinch or use the slider to zoom</div><input type="range" min="1" max="4" step="0.05" value="1" style="width:320px"><div style="display:flex;gap:8px;width:320px"><button class="alt" id="er">Rotate</button><button class="alt" id="ec">Cancel</button><button id="es">Use photo</button></div>';
+    document.body.appendChild(ov);
+    const cv=ov.querySelector('canvas'),sl=ov.querySelector('input'),ctx=cv.getContext('2d');
+    const base=()=>{const w=rot%2?img.height:img.width,h=rot%2?img.width:img.height;return Math.max(W/w,H/h)};
+    const draw=(c,k)=>{c.fillStyle='#000';c.fillRect(0,0,W*k,H*k);c.save();c.translate(W*k/2+ox*k,H*k/2+oy*k);c.rotate(rot*Math.PI/2);const sc=base()*z*k;c.scale(sc,sc);c.drawImage(img,-img.width/2,-img.height/2);c.restore()};
+    const paint=()=>draw(ctx,1);paint();
+    const dd=()=>{const[a,b]=[...pts.values()];return Math.hypot(a[0]-b[0],a[1]-b[1])};
+    sl.oninput=()=>{z=+sl.value;paint()};
+    cv.onpointerdown=e=>{cv.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);if(pts.size===2){d0=dd();z0=z}};
+    cv.onpointermove=e=>{
+      if(!pts.has(e.pointerId))return;const q=pts.get(e.pointerId);
+      if(pts.size===1){ox+=e.clientX-q[0];oy+=e.clientY-q[1]}
+      pts.set(e.pointerId,[e.clientX,e.clientY]);
+      if(pts.size===2){z=Math.min(4,Math.max(1,z0*dd()/d0));sl.value=z}
+      paint();
+    };
+    cv.onpointerup=cv.onpointercancel=e=>pts.delete(e.pointerId);
+    ov.querySelector('#er').onclick=()=>{rot=(rot+1)%4;paint()};
+    ov.querySelector('#ec').onclick=()=>ov.remove();
+    ov.querySelector('#es').onclick=()=>{const o=document.createElement('canvas');o.width=960;o.height=720;draw(o.getContext('2d'),3);ov.remove();cb(o.toDataURL('image/jpeg',0.72))};
+  };
+  img.src=URL.createObjectURL(file);
+}
+function pickImage(camera,cb){
+  const i=document.createElement('input');i.type='file';i.accept='image/*';if(camera)i.capture='environment';
+  i.onchange=()=>{if(i.files[0])editPhoto(i.files[0],cb)};i.click();
+}
+async function loadMedia(c){
+  const id=c.id,ph=can('cust.photo');let shop=null,fz=[];
+  try{const d=await userDoc().collection('photos').doc(id).get();shop=d.exists?d.data().data:null}catch(e){}
+  try{const q=await db.collection('freezers').where('cid','==',id).where('uid','==',uid).get();fz=q.docs.map(d=>d.data())}catch(e){}
+  if(cid!==id||cmode!=='view'||!$('cph'))return;
+  $('cph').innerHTML='<h3>Shop photo</h3>'+(shop?`<img src="${shop}" style="width:100%;border-radius:10px;margin-bottom:8px">`:'<div class="muted">No photo yet.</div>')+
+    (ph?`<button id="cshoot" class="alt">${shop?'Replace':'Take'} shop photo</button><button id="cpick" class="alt">Choose from gallery</button>`:'');
+  $('cfz').innerHTML='<h3>Freezers</h3>'+(fz.map(f=>`<div class="row"><span><b>${esc(f.serial)}</b><br><span class="muted">Given ${esc(f.date)}</span></span>${f.photo?`<img src="${f.photo}" style="width:96px;height:72px;object-fit:cover;border-radius:8px">`:''}${ph?`<a data-fd="${esc(f.serial)}">Remove</a>`:''}</div>`).join('')||'<div class="muted">No freezers recorded.</div>')+(ph?'<button id="cfadd" class="alt">Add freezer</button>':'');
+}
+function showFz(){
+  fzPhoto='';
+  $('cfz').innerHTML=`<h3>New freezer</h3><label>Serial number</label><input id="fzs"><label>Date given</label><input id="fzd" type="date" value="${ymd(new Date())}">
+  <button id="fzcam" class="alt">Take photo</button><button id="fzgal" class="alt">Choose from gallery</button>
+  <img id="fzprev" class="hidden" style="width:100%;border-radius:10px;margin-bottom:12px"><div class="err" id="fzm"></div>
+  <button id="fzsave">Save freezer</button><button id="fzcancel" class="alt">Cancel</button>`;
+}
+async function saveFreezer(c){
+  const serial=$('fzs').value.trim().toUpperCase(),date=$('fzd').value,m=$('fzm');
+  if(!serial||!date){m.textContent='Enter the serial number and date.';return}
+  const ref=db.collection('freezers').doc(idOf(serial));
+  try{const ex=await ref.get();if(ex.exists){m.textContent='This serial number is already registered.';return}}
+  catch(e){m.textContent=e.code==='permission-denied'?'This serial number is already registered by another user.':'Could not check the serial number. Connect to the internet and try again.';return}
+  try{await ref.set({serial,date,cid:c.id,cname:c.name,uid,photo:fzPhoto,ts:stamp()});loadMedia(c)}catch(e){m.textContent='Could not save: '+e.message}
+}
+async function delCust(){
+  try{const q=await db.collection('freezers').where('cid','==',cid).where('uid','==',uid).get();if(!q.empty){alert('This customer still has freezers. Remove them first.');return}}catch(e){}
+  if(!confirm('Delete this customer?'))return;
+  custs().doc(cid).delete().catch(e=>alert(e.message));userDoc().collection('photos').doc(cid).delete().catch(()=>{});
+  cid=null;cmode='list';drawCust();
+}
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>

@@ -72,6 +72,7 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 // 1) Paste your Firebase web app config here (Project settings > Your apps)
 const CFG={apiKey:"AIzaSyCqCsueTJSETiVjbFE7VdNyPXUZGRMKNqU",authDomain:"chillo-765ef.firebaseapp.com",projectId:"chillo-765ef",storageBucket:"chillo-765ef.firebasestorage.app",messagingSenderId:"1062690319679",appId:"1:1062690319679:web:90dfbe472054dd8f13f78a"};
@@ -413,6 +414,7 @@ $('cust').onclick=ev=>{
   else if(t.id==='ccall')custs().doc(cid).update({calledAt:stamp()}).catch(e=>alert(e.message));
   else if(t.id==='cshoot'||t.id==='cpick'){const c=cs.find(x=>x.id===cid);pickImage(t.id==='cshoot',d=>userDoc().collection('photos').doc(cid).set({data:d,ts:stamp()}).then(()=>loadMedia(c)).catch(e=>alert(e.message)))}
   else if(t.id==='cfadd')showFz();
+  else if(t.id==='fzscan')scanBarcode(v=>{$('fzs').value=String(v).trim().toUpperCase()});
   else if(t.id==='fzcam'||t.id==='fzgal')pickImage(t.id==='fzcam',d=>{fzPhoto=d;$('fzprev').src=d;$('fzprev').classList.remove('hidden')});
   else if(t.id==='fzsave')saveFreezer(cs.find(x=>x.id===cid));
   else if(t.id==='fzcancel')loadMedia(cs.find(x=>x.id===cid));
@@ -436,6 +438,27 @@ $('cust').onchange=ev=>{
 };
 
 let fzPhoto='';
+function scanBarcode(cb){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:#000;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px';
+  ov.innerHTML='<video playsinline muted style="width:100%;max-width:420px;border-radius:12px"></video><div style="color:#fff;font-size:14px" id="sm">Point the camera at the barcode</div><button class="alt" id="sx" style="max-width:420px">Cancel</button>';
+  document.body.appendChild(ov);
+  const v=ov.querySelector('video'),msg=t=>{ov.querySelector('#sm').textContent=t};let stop=false,stream=null,zr=null;
+  const end=r=>{if(stop)return;stop=true;if(stream)stream.getTracks().forEach(t=>t.stop());if(zr)try{zr.reset()}catch(e){}ov.remove();if(r)cb(r)};
+  ov.querySelector('#sx').onclick=()=>end();
+  const noCam=()=>msg('Camera not allowed. Allow camera access for this site, or type the number.');
+  if('BarcodeDetector' in window){
+    const det=new BarcodeDetector();
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(s=>{
+      stream=s;v.srcObject=s;v.play();
+      const tick=async()=>{if(stop)return;try{const r=await det.detect(v);if(r.length){end(r[0].rawValue);return}}catch(e){}setTimeout(tick,250)};tick();
+    }).catch(noCam);
+  }else if(window.ZXing){
+    zr=new ZXing.BrowserMultiFormatReader();
+    zr.decodeFromVideoDevice(null,v,r=>{if(r)end(r.getText())}).catch(noCam);
+  }else msg('Scanning is not available on this browser. Type the number.');
+}
+
 function editPhoto(file,cb){
   const img=new Image(),W=320,H=240;
   img.onload=()=>{
@@ -480,7 +503,7 @@ async function loadMedia(c){
 }
 function showFz(){
   fzPhoto='';
-  $('cfz').innerHTML=`<h3>New freezer</h3><label>Serial number</label><input id="fzs"><label>Date given</label><input id="fzd" type="date" value="${ymd(new Date())}">
+  $('cfz').innerHTML=`<h3>New freezer</h3><label>Serial number (type it, or scan the barcode)</label><input id="fzs"><button id="fzscan" class="alt">Scan barcode with camera</button><label>Date given</label><input id="fzd" type="date" value="${ymd(new Date())}">
   <button id="fzcam" class="alt">Take photo</button><button id="fzgal" class="alt">Choose from gallery</button>
   <img id="fzprev" class="hidden" style="width:100%;border-radius:10px;margin-bottom:12px"><div class="err" id="fzm"></div>
   <button id="fzsave">Save freezer</button><button id="fzcancel" class="alt">Cancel</button>`;
@@ -587,7 +610,7 @@ $('lsetup').onclick=ev=>{
   });
   b.commit().then(()=>$('cfm').textContent='Saved.').catch(e=>$('cfm').textContent=e.message);
 };
-const VER='v1.9';
+const VER='v1.10';
 document.querySelectorAll('.ver').forEach(e=>e.textContent=VER);
 function calcNeed(rem,c){
   let n=Math.max(0,c.max-rem);const k=c.step||0;

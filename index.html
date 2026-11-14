@@ -1,36 +1,43 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#2BB5E8">
+<meta name="theme-color" content="#2BB5E8"><meta name="color-scheme" content="light dark">
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg">
 <title>Chillo</title>
 <style>
-:root{--blue:#2BB5E8;--ink:#0F3B52;--pink:#FF7BAC;--bg:#F2F9FC;--line:#D3E8F0;--bad:#C0392B}
-*{box-sizing:border-box}
-body{margin:0;font:16px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
-header{background:var(--blue);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:22px}
-main{padding:16px;max-width:520px;margin:0 auto 90px}
+:root{--blue:#2BB5E8;--blue2:#1B8FBF;--ink:#0F3B52;--pink:#FF7BAC;--bg:#EAF7FD;--bg2:#F8FCFE;--card:#FFFFFF;--input:#F4FAFD;--line:#D8EAF2;--bad:#C0392B;--shadow:0 6px 20px rgba(15,59,82,.08)}
+@media (prefers-color-scheme:dark){:root{--ink:#E6F3F9;--bg:#0A1A24;--bg2:#0E2331;--card:#12303F;--input:#0E2735;--line:#24485A;--shadow:0 6px 20px rgba(0,0,0,.35)}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font:16px/1.45 system-ui,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:linear-gradient(180deg,var(--bg),var(--bg2)) fixed;min-height:100vh}
+header{background:linear-gradient(135deg,#1B9CD6,#4FC6F2);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 18px 14px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:22px;border-radius:0 0 22px 22px;box-shadow:0 6px 18px rgba(27,143,191,.35)}
+main{padding:16px;max-width:520px;margin:0 auto 100px}
+main section{background:var(--card);border-radius:20px;padding:18px;box-shadow:var(--shadow)}
+.hero{text-align:center;padding-top:56px}.hero input{text-align:left}
 .hidden{display:none!important}
-input,select,button{font:inherit;width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);margin:4px 0 12px}
-button{background:var(--ink);color:#fff;border:0;font-weight:600}
-button.alt{background:#fff;color:var(--ink);border:1px solid var(--line)}
-label{font-size:14px;font-weight:600}
-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-nav button{margin:0;border-radius:0;background:none;color:var(--ink);opacity:.6;padding:14px 4px}
-nav{overflow-x:auto}
-nav button{font-size:14px;flex:1 0 auto;width:auto;white-space:nowrap;padding:14px 12px}
-nav::-webkit-scrollbar{display:none}
-nav button.on{opacity:1;box-shadow:inset 0 3px 0 var(--pink)}
-.big{font-size:40px;font-weight:700;margin-bottom:8px}
-.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
-.bar{height:10px;background:var(--line);border-radius:5px;overflow:hidden;margin-top:6px}
-.bar i{display:block;height:100%;background:var(--pink)}
+h1{font-size:30px;margin:6px 0}h2{font-size:22px;margin:0 0 12px}
+h3{font-size:13px;margin:20px 0 6px;text-transform:uppercase;letter-spacing:.06em;color:var(--blue2)}
+input,select,button{font:inherit;width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:14px;background:var(--input);color:var(--ink);margin:4px 0 12px;outline:none}
+input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(43,181,232,.2)}
+button{background:linear-gradient(135deg,#2BB5E8,#1B8FBF);color:#fff;border:0;font-weight:700;box-shadow:0 4px 12px rgba(27,143,191,.3)}
+button:active{transform:scale(.98)}
+button.alt{background:var(--card);color:var(--blue2);border:1.5px solid var(--blue);box-shadow:none}
+#cdel,#pdel,#odel,#rclr{color:var(--bad);border-color:#E9B4AD}
+label{font-size:13px;font-weight:700;opacity:.85}
+.big{font-size:42px;font-weight:800;margin:2px 0 10px;background:linear-gradient(90deg,var(--ink),var(--blue2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.bar{height:12px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#FF7BAC,#FFA46B);border-radius:6px}
 .muted{opacity:.65;font-size:14px}.err{color:var(--bad);font-size:14px;min-height:18px}
-input[type=checkbox]{width:24px;height:24px;margin:0;flex:none}
-a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
+a{color:var(--blue2);background:rgba(43,181,232,.12);padding:4px 11px;border-radius:999px;font-size:13px;font-weight:700;margin-left:8px;cursor:pointer;white-space:nowrap}
+input[type=checkbox]{width:24px;height:24px;margin:0;flex:none;accent-color:#1B8FBF}
+details summary{cursor:pointer;font-weight:600}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;overflow-x:auto;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -6px 18px rgba(15,59,82,.08)}
+nav::-webkit-scrollbar{display:none}
+nav button{margin:0;border-radius:0;background:none;box-shadow:none;color:var(--ink);opacity:.55;flex:1 0 auto;width:auto;min-width:72px;white-space:nowrap;font-size:11px;font-weight:600;padding:9px 8px 10px;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button.on{opacity:1;color:var(--blue2);box-shadow:inset 0 3px 0 var(--pink)}
 </style></head><body>
 
-<div id="login" class="hidden"><main>
+<div id="login" class="hidden"><main class="hero">
 <img src="icon.svg" width="72" height="72" alt=""><h1 style="margin:8px 0 0">Chillo <small class="ver muted" style="font-size:13px;font-weight:400"></small></h1><p class="muted">Sign in to log your sales.</p>
 <label>Email</label><input id="em" type="email" autocomplete="username">
 <label>Password</label><input id="pw" type="password" inputmode="numeric" autocomplete="current-password">
@@ -41,7 +48,7 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 <button class="alt" id="out">Sign out</button></main></div>
 
 <div id="app" class="hidden">
-<header><span>Chillo <small class="ver" style="font-size:12px;font-weight:400;opacity:.85"></small></span><span id="who" style="font-size:14px;font-weight:500"></span></header>
+<header><span style="display:flex;align-items:center;gap:8px"><img src="icon.svg" width="30" height="30" alt="">Chillo <small class="ver" style="font-size:12px;font-weight:400;opacity:.85"></small></span><span id="who" style="font-size:14px;font-weight:500"></span></header>
 <main>
 <section id="home"></section>
 <section id="add" class="hidden"><h2>Daily sale</h2>
@@ -55,6 +62,7 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 <section id="cust" class="hidden"></section>
 <section id="stock" class="hidden"></section>
 <section id="lsetup" class="hidden"></section>
+<section id="rem" class="hidden"></section>
 <section id="set" class="hidden"><h2>Settings</h2>
 <div id="tgbox"><label>Monthly target (SAR)</label><input id="tg" type="number" inputmode="decimal">
 <button id="stg" class="alt">Save target</button></div>
@@ -64,7 +72,7 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 <div class="err" id="pmsg"></div><button id="cp" class="alt">Change password</button>
 <p class="muted">Chillo <span class="ver"></span></p><button id="out2">Sign out</button></section>
 </main>
-<nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button><button data-t="cust" id="tcust" class="hidden">Customers</button><button data-t="stock" id="tstock" class="hidden">Stock</button><button data-t="lsetup" id="tlsetup" class="hidden">Load setup</button></nav>
+<nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button><button data-t="cust" id="tcust" class="hidden">Customers</button><button data-t="stock" id="tstock" class="hidden">Stock</button><button data-t="lsetup" id="tlsetup" class="hidden">Load setup</button><button data-t="rem" id="trem" class="hidden">Reminders</button></nav>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -92,9 +100,10 @@ const sales=()=>userDoc().collection('sales');
 
 function show(id){['login','wait','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
 function tab(t){
-  ['home','add','set','mem','prod','cust','stock','lsetup'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
+  ['home','add','set','mem','prod','cust','stock','lsetup','rem'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   if(t==='lsetup')drawSetup();
+  if(t==='rem')drawRems();
 }
 function reset(){editId=null;$('amt').value='';$('note').value='';$('aerr').textContent='';$('date').value=ymd(new Date());$('save').textContent='Save sale'}
 
@@ -124,7 +133,7 @@ function start(){
   unsub&&unsub();
   unsub=sales().where('date','>=',a).where('date','<=',b).orderBy('date','desc')
     .onSnapshot(s=>{entries=s.docs.map(d=>({id:d.id,...d.data()}));render()});
-  reset();$('tg').value=me.target||'';fillAreas();applyAccess();if(me.role==='admin')watchMembers();if(can('prod.view')||can('stock.use')||can('load.setup'))watchProducts();if(can('cust.view'))watchCusts();if(can('stock.use')||can('load.setup'))loadStock();
+  reset();$('tg').value=me.target||'';fillAreas();applyAccess();if(me.role==='admin')watchMembers();if(can('prod.view')||can('stock.use')||can('load.setup'))watchProducts();if(can('cust.view'))watchCusts();if(can('rem.use'))watchRems();if(can('stock.use')||can('load.setup'))loadStock();
 }
 
 function render(){
@@ -138,7 +147,7 @@ function render(){
   const need=target&&left>0?Math.max(0,(target-total)/left):0;
   const byArea={};entries.forEach(e=>{const k=e.area||'No area';byArea[k]=(byArea[k]||0)+e.amount});
   $('home').innerHTML=
-   `<div class="muted">${n.toLocaleString('en',{month:'long',year:'numeric'})}</div>
+   `${dueHtml()}<div class="muted">${n.toLocaleString('en',{month:'long',year:'numeric'})}</div>
     <div class="big">${fmt(total)} SAR</div>
     <div class="row"><span>Daily average</span><b>${fmt(avg)}</b></div>
     <div class="row"><span>Expected month-end</span><b>${fmt(proj)}</b></div>
@@ -186,6 +195,8 @@ const PERMS={
  'Sales':[['sales.add','Add daily sales'],['sales.edit','Edit sale entries'],['sales.delete','Delete sale entries'],['sales.report','See monthly report']],
  'Products':[['prod.view','View products'],['prod.price','View prices']],
  'Customers':[['cust.view','View customers and mark visits'],['cust.add','Add customers'],['cust.edit','Edit customers'],['cust.delete','Delete customers'],['cust.photo','Shop photo and freezer records']],
+ 'Routes and reminders':[['route.use','Create routes'],['rem.use','Reminders']],
+ 'Credit ledger':[['led.view','View customer credit'],['led.add','Give credit and record payments'],['led.edit','Delete credit entries']],
  'Stock and orders':[['stock.use','Upload stock, make order, morning check, saved orders'],['load.setup','Own load limits and doors']],
  'Settings':[['set.target','Set own monthly target'],['set.areas','Manage own areas']]};
 const can=k=>me.role==='admin'||!!(me.perms&&me.perms[k]);
@@ -198,6 +209,7 @@ function applyAccess(){
   $('tcust').classList.toggle('hidden',!can('cust.view'));
   $('tstock').classList.toggle('hidden',!can('stock.use'));
   $('tlsetup').classList.toggle('hidden',!can('load.setup'));
+  $('trem').classList.toggle('hidden',!can('rem.use'));
   $('tgbox').classList.toggle('hidden',!can('set.target'));
   $('arbox').classList.toggle('hidden',!can('set.areas'));
 }
@@ -358,20 +370,22 @@ function isToday(c){
   return (c.type==='fixed'&&(c.days||[]).includes(new Date().getDay()))||(c.type==='call'&&c.calledAt&&c.calledAt>(c.lastVisit||''));
 }
 function drawCust(){
-  if(cmode==='edit')return drawEdit();if(cmode==='view')return drawView();
+  if(cmode==='edit')return drawEdit();if(cmode==='view')return drawView();if(cmode==='route')return drawRoute();
   $('cust').innerHTML=`<h2>Customers</h2><input id="cq" placeholder="Search shop, owner or phone" value="${esc(cq)}">
-  <label>Show</label><select id="cs">${[['all','All'],['today',"Today's route"],...DAYS.map(([d,t])=>['d'+d,t]),['random','Random days'],['call','On call'],['missed','Missed visit this week']].map(([v,t])=>`<option value="${v}" ${v===cshow?'selected':''}>${t}</option>`).join('')}</select>
-  <label>Order</label><select id="co2"><option value="az">A to Z</option><option value="near" ${csort==='near'?'selected':''}>Nearest first</option></select>
-  ${can('cust.add')?'<button id="cadd">Add customer</button>':''}<div id="clist"></div>`;
+  <label>Show</label><select id="cs">${[['all','All'],['today',"Today's route"],...DAYS.map(([d,t])=>['d'+d,t]),['random','Random days'],['call','On call'],['missed','Missed visit this week'],['owes','Owes money']].map(([v,t])=>`<option value="${v}" ${v===cshow?'selected':''}>${t}</option>`).join('')}</select>
+  <label>Order</label><select id="co2"><option value="az">A to Z</option><option value="near" ${csort==='near'?'selected':''}>Nearest first</option><option value="credit" ${csort==='credit'?'selected':''}>Highest credit first</option></select>
+  ${can('cust.add')?'<button id="cadd">Add customer</button>':''}${can('route.use')?'<button id="crt" class="alt">Create route from this list</button>':''}<div id="clist"></div>`;
   drawCList();
 }
 function drawCList(){
   const q=cq.toLowerCase();
   let l=cs.filter(c=>(!q||((c.name||'')+' '+(c.owner||'')+' '+(c.phone||'')).toLowerCase().includes(q))&&
-    (cshow==='all'||(cshow==='today'&&isToday(c))||(cshow[0]==='d'&&c.type==='fixed'&&(c.days||[]).includes(+cshow.slice(1)))||(cshow==='random'&&c.type==='random')||(cshow==='call'&&c.type==='call')||(cshow==='missed'&&missed(c))));
+    (cshow==='all'||(cshow==='today'&&isToday(c))||(cshow[0]==='d'&&c.type==='fixed'&&(c.days||[]).includes(+cshow.slice(1)))||(cshow==='random'&&c.type==='random')||(cshow==='call'&&c.type==='call')||(cshow==='missed'&&missed(c))||(cshow==='owes'&&(c.bal||0)>0)));
+  if(csort==='credit')l.sort((a,b)=>(b.bal||0)-(a.bal||0));
   if(csort==='near'&&pos)l.sort((a,b)=>(dist(a)??1e9)-(dist(b)??1e9));
+  st.cl=l;
   $('clist').innerHTML=`<div class="muted">${l.length} customers</div>`+l.map(c=>{const d=dist(c);
-    return `<div class="row" data-v="${c.id}"><span><b>${esc(c.name)}</b><br><span class="muted">${esc(c.area||'No area')}, ${c.type==='fixed'?(c.days||[]).map(dn).join(' '):c.type==='call'?'On call':'Random'}</span></span>
+    return `<div class="row" data-v="${c.id}"><span><b>${esc(c.name)}</b><br><span class="muted">${esc(c.area||'No area')}, ${c.type==='fixed'?(c.days||[]).map(dn).join(' '):c.type==='call'?'On call':'Random'}${(c.bal||0)>0?'<br><b style="color:#C0392B">Owes '+fmt(c.bal)+'</b>':''}</span></span>
     <span class="muted">${d!=null?d.toFixed(1)+' km':''}${missed(c)?'<br>Missed':''}</span></div>`}).join('');
 }
 function drawView(){
@@ -382,10 +396,10 @@ function drawView(){
   <div class="row"><span>Owner</span><b>${esc(c.owner||'-')}</b></div><div class="row"><span>Phone</span><b>${esc(c.phone||'-')}</b></div>
   <div class="row"><span>Area</span><b>${esc(c.area||'-')}</b></div><div class="row"><span>Visits</span><b>${typ}</b></div>
   <div class="row"><span>Last visit</span><b>${c.lastVisit?c.lastVisit.replace('T',' '):'Never'}</b></div>
-  ${c.notes?`<div class="row"><span>Notes</span><b>${esc(c.notes)}</b></div>`:''}<div id="cph"></div><div id="cfz"></div><p></p>
+  ${c.notes?`<div class="row"><span>Notes</span><b>${esc(c.notes)}</b></div>`:''}<div id="cph"></div><div id="cfz"></div><div id="cled"></div>${remHtml(c.id)}<p></p>
   <button id="cvis">Mark visited</button>${c.type==='call'?'<button id="ccall" class="alt">Customer called, visit today</button>':''}
   ${nav?`<button class="alt" data-go="${esc(nav)}">Navigate</button>`:''}${c.phone?`<button class="alt" data-go="tel:${esc(c.phone)}">Call</button><button class="alt" data-go="https://wa.me/${String(c.phone).replace(/\D/g,'')}">WhatsApp</button>`:''}
-  ${can('cust.edit')?'<button id="cedit" class="alt">Edit</button>':''}`;loadMedia(c);
+  ${can('cust.edit')?'<button id="cedit" class="alt">Edit</button>':''}`;loadMedia(c);loadLedger(c);
 }
 function drawEdit(){
   const c=cs.find(x=>x.id===cid)||{type:'fixed',days:[]};ed={lat:c.lat??null,lng:c.lng??null,link:c.link||''};
@@ -414,6 +428,29 @@ $('cust').onclick=ev=>{
   else if(t.id==='ccall')custs().doc(cid).update({calledAt:stamp()}).catch(e=>alert(e.message));
   else if(t.id==='cshoot'||t.id==='cpick'){const c=cs.find(x=>x.id===cid);pickImage(t.id==='cshoot',d=>userDoc().collection('photos').doc(cid).set({data:d,ts:stamp()}).then(()=>loadMedia(c)).catch(e=>alert(e.message)))}
   else if(t.id==='cfadd')showFz();
+  else if(t.id==='crt'){const all=st.cl||[];rt={list:all.filter(c=>c.lat!=null),skip:all.filter(c=>c.lat==null)};cmode='route';drawRoute()}
+  else if(t.id==='rback'){cmode='list';drawCust()}
+  else if(t.dataset.ru!==undefined||t.dataset.rd!==undefined){
+    const i=+(t.dataset.ru??t.dataset.rd),j=t.dataset.ru!==undefined?i-1:i+1;
+    if(j>=0&&j<rt.list.length){[rt.list[i],rt.list[j]]=[rt.list[j],rt.list[i]];drawRoute()}
+  }
+  else if(t.id==='rsh')window.open('https://wa.me/?text='+encodeURIComponent('Route '+ymd(new Date())+'\n'+rt.list.map((c,i)=>(i+1)+'. '+c.name+' https://maps.google.com/?q='+c.lat+','+c.lng).join('\n')),'_blank');
+  else if(t.id==='lcr'||t.id==='lpy'){
+    st.lt=t.id==='lcr'?'credit':'payment';
+    $('lform').innerHTML=`<label>${st.lt==='credit'?'Credit amount (SAR)':'Payment received (SAR)'}</label><input id="lamt" type="number" inputmode="decimal"><label>Date</label><input id="lda" type="date" value="${ymd(new Date())}"><label>Note (optional)</label><input id="lno"><div class="err" id="lmsg"></div><button id="lsave">Save</button><button id="lcancel" class="alt">Cancel</button>`;
+  }
+  else if(t.id==='lcancel')$('lform').innerHTML='';
+  else if(t.id==='lsave'){
+    const a=parseFloat($('lamt').value);if(!(a>0)){$('lmsg').textContent='Enter an amount above zero.';return}
+    const b=db.batch(),ref=custs().doc(cid).collection('ledger').doc();
+    b.set(ref,{type:st.lt,amount:a,date:$('lda').value,note:$('lno').value.trim(),ts:stamp()});
+    b.update(custs().doc(cid),{bal:inc(st.lt==='credit'?a:-a)});
+    b.commit().catch(e=>alert(e.message));$('lform').innerHTML='';
+  }
+  else if(t.dataset.ld){
+    const e=(st.led||[]).find(x=>x.id===t.dataset.ld);
+    if(e&&confirm('Delete this credit entry?')){const b=db.batch();b.delete(custs().doc(cid).collection('ledger').doc(e.id));b.update(custs().doc(cid),{bal:inc(e.type==='credit'?-e.amount:e.amount)});b.commit().catch(x=>alert(x.message))}
+  }
   else if(t.id==='fzscan')scanBarcode(v=>{$('fzs').value=String(v).trim().toUpperCase()});
   else if(t.id==='fzcam'||t.id==='fzgal')pickImage(t.id==='fzcam',d=>{fzPhoto=d;$('fzprev').src=d;$('fzprev').classList.remove('hidden')});
   else if(t.id==='fzsave')saveFreezer(cs.find(x=>x.id===cid));
@@ -432,12 +469,89 @@ $('cust').onclick=ev=>{
 $('cust').oninput=ev=>{if(ev.target.id==='cq'){cq=ev.target.value;drawCList()}};
 $('cust').onchange=ev=>{
   const i=ev.target.id;
+  if(i==='rso'){routeSort(ev.target.value);return}
   if(i==='cs'){cshow=ev.target.value;drawCList()}
   if(i==='co2'){csort=ev.target.value;csort==='near'&&!pos?getPos(drawCList):drawCList()}
   if(i==='clk'){const l=parseLoc(ev.target.value);if(l){ed.lat=l.lat;ed.lng=l.lng;$('cloc').textContent='Location read from link'}else $('cloc').textContent=ev.target.value?'Link saved. Coordinates could not be read, so use GPS once at the shop for nearest-first.':''}
 };
 
 let fzPhoto='';
+let rt={list:[],skip:[]},rems=[];
+const hav=(p,c)=>{const r=x=>x*Math.PI/180,dl=r(c.lat-p.lat),dg=r(c.lng-p.lng),a=Math.sin(dl/2)**2+Math.cos(r(p.lat))*Math.cos(r(c.lat))*Math.sin(dg/2)**2;return 6371*2*Math.asin(Math.sqrt(a))};
+function drawRoute(){
+  const l=rt.list,parts=[];
+  for(let i=0;i<l.length;i+=10){
+    const ch=l.slice(i,i+10),dest=ch[ch.length-1],wp=ch.slice(0,-1).map(c=>c.lat+','+c.lng).join('|');
+    let u='https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+dest.lat+','+dest.lng+(wp?'&waypoints='+encodeURIComponent(wp):'');
+    if(i>0)u+='&origin='+l[i-1].lat+','+l[i-1].lng;
+    parts.push([i+1,i+ch.length,u]);
+  }
+  $('cust').innerHTML=`<a id="rback" style="margin:0">Back to customers</a><h2>Route</h2>
+  <label>Order by</label><select id="rso"><option value="">Keep list order</option><option value="near">Nearest first</option><option value="area">Area</option><option value="az">A to Z</option><option value="missed">Missed visits first</option></select>
+  <p class="muted">${l.length} stops. Use Up and Down to move a stop.</p>`+
+  l.map((c,i)=>`<div class="row"><span>${i+1}. ${esc(c.name)}<br><span class="muted">${esc(c.area||'No area')}</span></span><span><a data-ru="${i}">Up</a><a data-rd="${i}">Down</a></span></div>`).join('')+
+  (rt.skip.length?`<p class="muted">Skipped, no location saved: ${rt.skip.map(c=>esc(c.name)).join(', ')}</p>`:'')+
+  parts.map(x=>`<button data-go="${esc(x[2])}">Open in Google Maps, stops ${x[0]} to ${x[1]}</button>`).join('')+(l.length?'<button id="rsh" class="alt">Share route on WhatsApp</button>':'');
+}
+function routeSort(m){
+  const l=rt.list;
+  if(m==='az')l.sort((a,b)=>a.name.localeCompare(b.name));
+  else if(m==='area')l.sort((a,b)=>(a.area||'').localeCompare(b.area||'')||a.name.localeCompare(b.name));
+  else if(m==='missed')l.sort((a,b)=>missed(b)-missed(a));
+  else if(m==='near'){
+    const go=p=>{const rest=l.slice(),out=[];let cur=p;
+      while(rest.length){let bi=0,bd=1e9;rest.forEach((c,i)=>{const d=hav(cur,c);if(d<bd){bd=d;bi=i}});const n=rest.splice(bi,1)[0];out.push(n);cur=n}
+      rt.list=out;drawRoute()};
+    return pos?go(pos):getPos(go);
+  }
+  drawRoute();
+}
+const remsCol=()=>userDoc().collection('reminders');
+function watchRems(){
+  remsCol().orderBy('ts','desc').onSnapshot(s=>{
+    rems=s.docs.map(d=>({id:d.id,...d.data()}));
+    const n=rems.filter(r=>!r.done&&r.due&&r.due<=ymd(new Date())).length;
+    $('trem').querySelector('span').textContent='Reminders'+(n?' ('+n+')':'');drawRems();try{render()}catch(e){}
+  },()=>{});
+}
+function dueHtml(){
+  const t=ymd(new Date()),l=rems.filter(r=>!r.done&&r.due&&r.due<=t);
+  return l.length?`<div class="row" style="border-left:4px solid var(--pink);padding-left:10px;margin-bottom:14px"><span><b>Reminders due</b>${l.map(r=>'<br>'+esc(r.text)+(r.cname?' ('+esc(r.cname)+')':'')).join('')}</span></div>`:'';
+}
+function remHtml(id){
+  const l=rems.filter(r=>!r.done&&r.cid===id);
+  return l.length?'<h3>Reminders</h3>'+l.map(r=>`<div class="row"><span>${esc(r.text)}</span><span class="muted">${esc(r.due||'')}</span></div>`).join(''):'';
+}
+function drawRems(){
+  const t=ymd(new Date()),open=rems.filter(r=>!r.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999')),done=rems.filter(r=>r.done);
+  $('rem').innerHTML=`<h2>Reminders</h2><label>Reminder</label><input id="rtx"><label>Customer (optional)</label><select id="rcu"><option value="">None</option>${cs.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
+  <label>Date (optional)</label><input id="rdu" type="date"><div class="err" id="rmsg"></div><button id="radd">Add reminder</button>`+
+  (open.map(r=>`<div class="row"><label style="display:flex;gap:10px;align-items:flex-start;flex:1"><input type="checkbox" data-rdn="${r.id}" style="margin-top:3px"><span>${esc(r.text)}<br><span class="muted">${r.cname?esc(r.cname)+(r.due?', ':''):''}${esc(r.due||'')}</span></span></label>${r.due&&r.due<=t?'<b style="color:#C0392B">Due</b>':''}</div>`).join('')||'<p class="muted">No open reminders.</p>')+
+  (done.length?`<button id="rclr" class="alt">Delete ${done.length} done reminders</button>`:'');
+}
+$('rem').onclick=ev=>{
+  const t=ev.target;
+  if(t.id==='radd'){
+    const tx=$('rtx').value.trim();if(!tx){$('rmsg').textContent='Write the reminder first.';return}
+    const cu=$('rcu').value,c=cs.find(x=>x.id===cu);
+    remsCol().add({text:tx,cid:cu,cname:c?c.name:'',due:$('rdu').value,done:false,ts:stamp()}).catch(e=>alert(e.message));
+  }
+  if(t.id==='rclr'){const b=db.batch();rems.filter(r=>r.done).forEach(r=>b.delete(remsCol().doc(r.id)));b.commit().catch(e=>alert(e.message))}
+};
+$('rem').onchange=ev=>{if(ev.target.dataset.rdn)remsCol().doc(ev.target.dataset.rdn).update({done:true}).catch(e=>alert(e.message))};
+
+async function loadLedger(c){
+  if(!can('led.view'))return;
+  const id=c.id;let l=[];
+  try{const q=await custs().doc(id).collection('ledger').orderBy('ts','desc').get();l=q.docs.map(d=>({id:d.id,...d.data()}))}catch(e){}
+  if(cid!==id||cmode!=='view'||!$('cled'))return;
+  st.led=l;
+  $('cled').innerHTML=`<h3>Credit</h3><div class="big" style="font-size:30px;color:${(c.bal||0)>0?'#C0392B':'inherit'}">${fmt(c.bal||0)} SAR</div><div class="muted">Kept separate from your sales totals</div>`+
+   (can('led.add')?'<button id="lcr" class="alt">Give credit</button><button id="lpy" class="alt">Payment received</button>':'')+'<div id="lform"></div>'+
+   (l.map(e=>`<div class="row"><span>${esc(e.date)}<br><span class="muted">${e.type==='credit'?'Credit given':'Payment received'}${e.note?', '+esc(e.note):''}</span></span><span><b style="color:${e.type==='credit'?'#C0392B':'#1E8E4E'}">${e.type==='credit'?'+':'-'}${fmt(e.amount)}</b>${can('led.edit')?`<a data-ld="${e.id}">Delete</a>`:''}</span></div>`).join('')||'<div class="muted">No entries yet.</div>');
+}
+const inc=n=>firebase.firestore.FieldValue.increment(n);
+
 function scanBarcode(cb){
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:#000;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px';
@@ -517,6 +631,7 @@ async function saveFreezer(c){
   try{await ref.set({serial,date,cid:c.id,cname:c.name,uid,photo:fzPhoto,ts:stamp()});loadMedia(c)}catch(e){m.textContent='Could not save: '+e.message}
 }
 async function delCust(){
+  const cc=cs.find(x=>x.id===cid);if(cc&&(cc.bal||0)>0){alert('This customer still owes money. Clear the credit first.');return}
   try{const q=await db.collection('freezers').where('cid','==',cid).where('uid','==',uid).get();if(!q.empty){alert('This customer still has freezers. Remove them first.');return}}catch(e){}
   if(!confirm('Delete this customer?'))return;
   custs().doc(cid).delete().catch(e=>alert(e.message));userDoc().collection('photos').doc(cid).delete().catch(()=>{});
@@ -610,7 +725,19 @@ $('lsetup').onclick=ev=>{
   });
   b.commit().then(()=>$('cfm').textContent='Saved.').catch(e=>$('cfm').textContent=e.message);
 };
-const VER='v1.10';
+const VER='v1.13';
+const IC={
+ home:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+ add:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+ set:'<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+ mem:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-4 3-6 6.5-6s6 2 6.5 6M16 5a3 3 0 010 6M18 14c2 .7 3.2 2.5 3.5 6"/>',
+ prod:'<path d="M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10"/>',
+ cust:'<path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M9 20v-5h6v5"/><path d="M4 9c0 2 3 2 4 0 1 2 3 2 4 0 1 2 3 2 4 0 1 2 4 2 4 0"/>',
+ stock:'<path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/>',
+ lsetup:'<path d="M2 6h12v10H2zM14 10h4l3 3v3h-7"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/>',
+ rem:'<path d="M6 16v-5a6 6 0 0112 0v5l2 2H4zM10 21h4"/>'};
+document.querySelectorAll('nav button').forEach(b=>{const l=b.textContent;b.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[b.dataset.t]+'</svg><span>'+l+'</span>'});
+
 document.querySelectorAll('.ver').forEach(e=>e.textContent=VER);
 function calcNeed(rem,c){
   let n=Math.max(0,c.max-rem);const k=c.step||0;

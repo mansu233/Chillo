@@ -54,6 +54,7 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 <section id="prod" class="hidden"></section>
 <section id="cust" class="hidden"></section>
 <section id="stock" class="hidden"></section>
+<section id="lsetup" class="hidden"></section>
 <section id="set" class="hidden"><h2>Settings</h2>
 <div id="tgbox"><label>Monthly target (SAR)</label><input id="tg" type="number" inputmode="decimal">
 <button id="stg" class="alt">Save target</button></div>
@@ -63,7 +64,7 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 <div class="err" id="pmsg"></div><button id="cp" class="alt">Change password</button>
 <button id="out2">Sign out</button></section>
 </main>
-<nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button><button data-t="cust" id="tcust" class="hidden">Customers</button><button data-t="stock" id="tstock" class="hidden">Stock</button></nav>
+<nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button><button data-t="cust" id="tcust" class="hidden">Customers</button><button data-t="stock" id="tstock" class="hidden">Stock</button><button data-t="lsetup" id="tlsetup" class="hidden">Load setup</button></nav>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -90,8 +91,9 @@ const sales=()=>userDoc().collection('sales');
 
 function show(id){['login','wait','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
 function tab(t){
-  ['home','add','set','mem','prod','cust','stock'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
+  ['home','add','set','mem','prod','cust','stock','lsetup'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  if(t==='lsetup')drawSetup();
 }
 function reset(){editId=null;$('amt').value='';$('note').value='';$('aerr').textContent='';$('date').value=ymd(new Date());$('save').textContent='Save sale'}
 
@@ -121,7 +123,7 @@ function start(){
   unsub&&unsub();
   unsub=sales().where('date','>=',a).where('date','<=',b).orderBy('date','desc')
     .onSnapshot(s=>{entries=s.docs.map(d=>({id:d.id,...d.data()}));render()});
-  reset();$('tg').value=me.target||'';fillAreas();applyAccess();if(me.role==='admin')watchMembers();if(can('prod.view'))watchProducts();if(can('cust.view'))watchCusts();if(can('stock.use'))loadStock();
+  reset();$('tg').value=me.target||'';fillAreas();applyAccess();if(me.role==='admin')watchMembers();if(can('prod.view')||can('stock.use')||can('load.setup'))watchProducts();if(can('cust.view'))watchCusts();if(can('stock.use')||can('load.setup'))loadStock();
 }
 
 function render(){
@@ -183,7 +185,7 @@ const PERMS={
  'Sales':[['sales.add','Add daily sales'],['sales.edit','Edit sale entries'],['sales.delete','Delete sale entries'],['sales.report','See monthly report']],
  'Products':[['prod.view','View products'],['prod.price','View prices']],
  'Customers':[['cust.view','View customers and mark visits'],['cust.add','Add customers'],['cust.edit','Edit customers'],['cust.delete','Delete customers'],['cust.photo','Shop photo and freezer records']],
- 'Stock and orders':[['stock.use','Upload stock, make order, morning check']],
+ 'Stock and orders':[['stock.use','Upload stock, make order, morning check, saved orders'],['load.setup','Own load limits and doors']],
  'Settings':[['set.target','Set own monthly target'],['set.areas','Manage own areas']]};
 const can=k=>me.role==='admin'||!!(me.perms&&me.perms[k]);
 let members=[],openId=null;
@@ -194,6 +196,7 @@ function applyAccess(){
   $('tprod').classList.toggle('hidden',!can('prod.view'));
   $('tcust').classList.toggle('hidden',!can('cust.view'));
   $('tstock').classList.toggle('hidden',!can('stock.use'));
+  $('tlsetup').classList.toggle('hidden',!can('load.setup'));
   $('tgbox').classList.toggle('hidden',!can('set.target'));
   $('arbox').classList.toggle('hidden',!can('set.areas'));
 }
@@ -214,7 +217,7 @@ function drawMembers(){
     <div class="row"><label for="act">Account active</label><input id="act" type="checkbox" ${m.active!==false?'checked':''}></div>`+
     Object.keys(PERMS).map(c=>`<h3>${c}</h3>`+PERMS[c].map(([k,t])=>`<div class="row"><label for="p_${k}">${t}</label><input id="p_${k}" data-k="${k}" type="checkbox" ${p[k]?'checked':''}></div>`).join('')).join('')+
     `<p><button id="pall" class="alt">Switch all on</button><button id="pnone" class="alt">Switch all off</button></p>
-    <div class="err" id="mmsg"></div><button id="msave">Save</button><button id="mreset" class="alt">Send password reset email</button>`;
+    <div class="err" id="mmsg"></div><button id="msave">Save</button><button id="mreset" class="alt">Send password reset email</button><button id="mord" class="alt">View orders</button>`;
     return;
   }
   $('mem').innerHTML=`<h2>Add member</h2>
@@ -240,6 +243,8 @@ async function addMember(){
 $('mem').onclick=async ev=>{
   const t=ev.target;
   if(t.id==='addm')return addMember();
+  if(t.id==='mord')return showMemberOrders();
+  ordActions(t,openId,showMemberOrders);
   if(t.dataset.m){openId=t.dataset.m;drawMembers();return}
   if(t.id==='back'){openId=null;drawMembers();return}
   if(t.id==='pall'||t.id==='pnone'){document.querySelectorAll('#mem [data-k]').forEach(c=>c.checked=t.id==='pall');return}
@@ -535,12 +540,60 @@ function offerNew(rows){
 function pendHtml(){
   return me.role==='admin'&&reqs.length?`<h3>Waiting for approval (${reqs.length})</h3>`+reqs.map(r=>`<div class="row"><span>${esc(r.name)}<br><span class="muted">${esc(r.code)}</span></span><span><a data-ap="${esc(r.id)}">Approve</a><a data-rj="${esc(r.id)}">Reject</a></span></div>`).join('')+'<p></p>':'';
 }
+const ordersCol=u=>db.collection('users').doc(u).collection('orders');
+function orderText(rows,date){
+  let t='Order '+date,dd='';
+  rows.filter(r=>r.qty>0).forEach(r=>{if(r.door!==dd){t+='\n\n'+r.door;dd=r.door}t+='\n'+r.name+': '+r.qty});
+  return t;
+}
+function ordersHtml(l){
+  st.ol=l;
+  return (l.map(o=>{const tot=o.rows.reduce((a,r)=>a+r.qty,0);
+    return `<div class="row" style="align-items:flex-start"><input type="checkbox" data-sel="${o.id}" style="margin-top:4px"><details style="flex:1"><summary>${esc(o.date)}, ${o.rows.length} products, ${tot} cartons</summary><pre style="white-space:pre-wrap;font:inherit;margin:8px 0">${esc(orderText(o.rows,o.date))}</pre></details><a data-sh="${o.id}">Share</a></div>`}).join('')||'<p class="muted">No saved orders.</p>')+
+    (l.length?'<p></p><button id="odel" class="alt">Delete ticked orders</button>':'');
+}
+async function drawOrders(){
+  $('sb').innerHTML='<p class="muted">Loading...</p>';let l=[];
+  try{const q=await ordersCol(uid).orderBy('ts','desc').get();l=q.docs.map(d=>({id:d.id,...d.data()}))}catch(e){}
+  $('sb').innerHTML='<p class="muted">Saved orders stay here until you delete them. Tick one or more to delete.</p>'+ordersHtml(l);
+}
+async function showMemberOrders(){
+  let l=[];try{const q=await ordersCol(openId).orderBy('ts','desc').get();l=q.docs.map(d=>({id:d.id,...d.data()}))}catch(e){}
+  $('mem').innerHTML='<a id="back" style="margin:0">Back to members</a><h2>Orders</h2>'+ordersHtml(l);
+}
+function ordActions(t,ouid,after){
+  if(t.dataset.sh){const o=(st.ol||[]).find(x=>x.id===t.dataset.sh);if(o)window.open('https://wa.me/?text='+encodeURIComponent(orderText(o.rows,o.date)),'_blank')}
+  if(t.id==='odel'){
+    const ids=[...document.querySelectorAll('[data-sel]:checked')].map(x=>x.dataset.sel);
+    if(!ids.length){alert('Tick the orders you want to delete.');return}
+    if(confirm('Delete '+ids.length+' selected orders?')){const b=db.batch();ids.forEach(i=>b.delete(ordersCol(ouid).doc(i)));b.commit().then(after).catch(e=>alert(e.message))}
+  }
+}
+function drawSetup(){
+  if(st.doors.length!==8){$('lsetup').innerHTML='<p class="muted">Loading...</p>';return}
+  const src=knownList().sort((a,b)=>a.name.localeCompare(b.name));
+  $('lsetup').innerHTML=`<h2>Load setup</h2><p class="muted">Set your vehicle's door names, then each product's maximum load and door.</p><h3>Door names</h3>`+
+   st.doors.map((d,i)=>`<input data-dn="${i}" value="${esc(d)}">`).join('')+`<h3>Products</h3>`+
+   (src.length?src.map(r=>{const c=st.cfg[r.key]||{};return `<div class="row"><span>${esc(r.name)}</span><span style="display:flex;gap:6px"><input data-k="${r.key}" data-f="max" type="number" placeholder="Max" value="${c.max||''}" style="width:70px;margin:0;padding:6px"><select data-k="${r.key}" data-f="door" style="width:96px;margin:0;padding:6px"><option value="">Door</option>${st.doors.map((d,i)=>`<option value="${i}" ${c.door===i?'selected':''}>${esc(d)}</option>`).join('')}</select></span></div>`}).join(''):'<p class="muted">No products yet. Add products, or upload a night stock screenshot first.</p>')+
+   `<p></p><button id="cfsave">Save setup</button><div class="muted" id="cfm"></div>`;
+}
+$('lsetup').onclick=ev=>{
+  if(ev.target.id!=='cfsave')return;
+  const b=db.batch(),cl=userDoc().collection('loadcfg');
+  st.doors=[...document.querySelectorAll('#lsetup [data-dn]')].map(x=>x.value.trim()||'Door');b.set(cl.doc('_doors'),{names:st.doors});
+  knownList().forEach(r=>{
+    const mx=document.querySelector(`#lsetup [data-k="${r.key}"][data-f=max]`),dr=document.querySelector(`#lsetup [data-k="${r.key}"][data-f=door]`);if(!mx)return;
+    const c={name:r.name,max:parseFloat(mx.value)||0,door:dr.value===''?null:+dr.value};st.cfg[r.key]=c;b.set(cl.doc(r.key),c);
+  });
+  b.commit().then(()=>$('cfm').textContent='Saved.').catch(e=>$('cfm').textContent=e.message);
+};
 let st={v:'order',stage:'pick',cfg:{},doors:[],night:null,order:null,rows:null,html:''};
 const stk=()=>userDoc().collection('stock');
 async function loadStock(){
   try{const q=await userDoc().collection('loadcfg').get();q.docs.forEach(d=>{if(d.id==='_doors')st.doors=d.data().names;else st.cfg[d.id]=d.data()})}catch(e){}
   if(!st.doors||st.doors.length!==8)st.doors=[1,2,3,4,5,6,7,8].map(i=>'Door '+i);
-  for(const k of ['night','order']){try{const d=await stk().doc(k).get();st[k]=d.exists?d.data():null}catch(e){}}
+  try{const d=await stk().doc('night').get();st.night=d.exists?d.data():null}catch(e){}
+  try{const q=await ordersCol(uid).orderBy('ts','desc').limit(1).get();st.order=q.empty?null:q.docs[0].data()}catch(e){}
   drawStock();
 }
 async function ocr(file,say){
@@ -555,12 +608,12 @@ async function ocr(file,say){
 }
 const NOTE={order:'Upload the screenshot taken when about 90% of sales are done.',night:'Upload the screenshot after all sales are closed.',morning:'Upload the screenshot after loading is entered.'};
 function drawStock(){
-  $('stock').innerHTML=`<h2>Stock</h2><select id="sv">${[['order','1. Make order (evening)'],['night','2. Night stock (sales closed)'],['morning','3. Morning check'],['setup','Load setup']].map(([v,t])=>`<option value="${v}" ${v===st.v?'selected':''}>${t}</option>`).join('')}</select><div id="sb"></div>`;
+  $('stock').innerHTML=`<h2>Stock</h2><select id="sv">${[['order','1. Make order (evening)'],['night','2. Night stock (sales closed)'],['morning','3. Morning check'],['orders','Saved orders']].map(([v,t])=>`<option value="${v}" ${v===st.v?'selected':''}>${t}</option>`).join('')}</select><div id="sb"></div>`;
   drawSB();
 }
 function drawSB(){
   const b=$('sb');
-  if(st.v==='setup')return drawSetup();
+  if(st.v==='orders')return drawOrders();
   if(st.stage==='review')return drawReview();
   if(st.stage==='order')return drawOrder();
   if(st.stage==='done'){b.innerHTML=st.html+'<button id="sagain" class="alt">Start again</button>';return}
@@ -579,12 +632,6 @@ function drawOrder(){
     h+=`<div class="row"><span>${esc(r.name)}<br><span class="muted">Remaining ${r.rem}, max ${c.max}</span></span><input data-o="${r.key}" data-n="${esc(r.name)}" data-d="${d}" type="number" step="any" value="${Math.max(0,c.max-r.rem)}" style="width:80px;margin:0"></div>`});
   $('sb').innerHTML=`<p class="muted">Order = max load minus remaining. Change any quantity you want.${no?' '+no+' products have no max set (see Load setup).':''}</p>${h||'<p>No products have a max load yet. Set them in Load setup.</p>'}<p></p><button id="osave">Save order</button><button id="oshare" class="alt">Share on WhatsApp</button>`;
 }
-function drawSetup(){
-  const src=(st.night&&st.night.rows)||st.rows||[];
-  $('sb').innerHTML=`<h3>Door names</h3>`+st.doors.map((d,i)=>`<input data-dn="${i}" value="${esc(d)}">`).join('')+
-   `<h3>Max load and door per product</h3>`+(src.length?src.map(r=>{const c=st.cfg[r.key]||{};return `<div class="row"><span>${esc(r.name)}</span><span style="display:flex;gap:6px"><input data-k="${r.key}" data-f="max" type="number" placeholder="Max" value="${c.max||''}" style="width:70px;margin:0;padding:6px"><select data-k="${r.key}" data-f="door" style="width:96px;margin:0;padding:6px"><option value="">Door</option>${st.doors.map((d,i)=>`<option value="${i}" ${c.door===i?'selected':''}>${esc(d)}</option>`).join('')}</select></span></div>`}).join(''):'<p class="muted">Upload and save a night stock screenshot first, so the product list can be read from it.</p>')+
-   `<p></p><button id="cfsave">Save setup</button><div class="muted" id="cfm"></div>`;
-}
 function compare(m){
   const nm={},od={};((st.night&&st.night.rows)||[]).forEach(r=>nm[r.key]=r);((st.order&&st.order.rows)||[]).forEach(r=>od[r.key]=r.qty);
   let ok=0,bad=0;
@@ -602,6 +649,7 @@ function pickShot(){
 }
 $('stock').onclick=ev=>{
   const t=ev.target;
+  ordActions(t,uid,drawOrders);
   if(t.id==='sup')pickShot();
   else if(t.id==='sagain'){st.stage='pick';st.rows=null;drawSB()}
   else if(t.id==='sok'){
@@ -616,15 +664,8 @@ $('stock').onclick=ev=>{
   }
   else if(t.id==='osave'||t.id==='oshare'){
     const rows=[...document.querySelectorAll('#sb [data-o]')].map(x=>({key:x.dataset.o,name:x.dataset.n,door:x.dataset.d,qty:parseFloat(x.value)||0}));
-    if(t.id==='osave'){st.order={date:ymd(new Date()),rows};stk().doc('order').set(st.order).catch(e=>alert(e.message));st.html='<p>Order saved. Use Morning check after loading.</p>';st.stage='done';drawSB()}
-    else{let txt='Order '+ymd(new Date()),dd='';rows.filter(r=>r.qty>0).forEach(r=>{if(r.door!==dd){txt+='\n\n'+r.door;dd=r.door}txt+='\n'+r.name+': '+r.qty});window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank')}
-  }
-  else if(t.id==='cfsave'){
-    const b=db.batch(),cl=userDoc().collection('loadcfg'),src=(st.night&&st.night.rows)||[];
-    st.doors=[...document.querySelectorAll('#sb [data-dn]')].map(x=>x.value.trim()||'Door');b.set(cl.doc('_doors'),{names:st.doors});
-    src.forEach(r=>{const mx=document.querySelector(`#sb [data-k="${r.key}"][data-f=max]`),dr=document.querySelector(`#sb [data-k="${r.key}"][data-f=door]`);
-      const c={name:r.name,max:parseFloat(mx.value)||0,door:dr.value===''?null:+dr.value};st.cfg[r.key]=c;b.set(cl.doc(r.key),c)});
-    b.commit().then(()=>$('cfm').textContent='Saved.').catch(e=>$('cfm').textContent=e.message);
+    if(t.id==='osave'){st.order={date:ymd(new Date()),rows};st.order.ts=stamp();ordersCol(uid).add(st.order).catch(e=>alert(e.message));st.html='<p>Order saved. Use Morning check after loading.</p>';st.stage='done';drawSB()}
+    else window.open('https://wa.me/?text='+encodeURIComponent(orderText(rows,ymd(new Date()))),'_blank')
   }
 };
 $('stock').onchange=ev=>{if(ev.target.id==='sv'){st.v=ev.target.value;st.stage='pick';st.rows=null;drawSB()}};

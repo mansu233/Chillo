@@ -31,7 +31,7 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 </style></head><body>
 
 <div id="login" class="hidden"><main>
-<h1>Chillo</h1><p class="muted">Sign in to log your sales.</p>
+<img src="icon.svg" width="72" height="72" alt=""><h1 style="margin:8px 0 0">Chillo <small class="ver muted" style="font-size:13px;font-weight:400"></small></h1><p class="muted">Sign in to log your sales.</p>
 <label>Email</label><input id="em" type="email" autocomplete="username">
 <label>Password</label><input id="pw" type="password" inputmode="numeric" autocomplete="current-password">
 <div class="err" id="lerr"></div><button id="go">Sign in</button></main></div>
@@ -41,7 +41,7 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 <button class="alt" id="out">Sign out</button></main></div>
 
 <div id="app" class="hidden">
-<header><span>Chillo</span><span id="who" style="font-size:14px;font-weight:500"></span></header>
+<header><span>Chillo <small class="ver" style="font-size:12px;font-weight:400;opacity:.85"></small></span><span id="who" style="font-size:14px;font-weight:500"></span></header>
 <main>
 <section id="home"></section>
 <section id="add" class="hidden"><h2>Daily sale</h2>
@@ -62,7 +62,7 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 <input id="na" placeholder="New area, for example Jeddah"><button id="aa" class="alt">Add area</button></div>
 <label>New 6-digit password</label><input id="np" type="password" inputmode="numeric" maxlength="6">
 <div class="err" id="pmsg"></div><button id="cp" class="alt">Change password</button>
-<button id="out2">Sign out</button></section>
+<p class="muted">Chillo <span class="ver"></span></p><button id="out2">Sign out</button></section>
 </main>
 <nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button><button data-t="cust" id="tcust" class="hidden">Customers</button><button data-t="stock" id="tstock" class="hidden">Stock</button><button data-t="lsetup" id="tlsetup" class="hidden">Load setup</button></nav>
 </div>
@@ -553,9 +553,9 @@ function ordersHtml(l){
     (l.length?'<p></p><button id="odel" class="alt">Delete ticked orders</button>':'');
 }
 async function drawOrders(){
-  $('sb').innerHTML='<p class="muted">Loading...</p>';let l=[];
+  $('sb').innerHTML='<p class="muted">Loading...</p>';let l=[];await cleanOrders();
   try{const q=await ordersCol(uid).orderBy('ts','desc').get();l=q.docs.map(d=>({id:d.id,...d.data()}))}catch(e){}
-  $('sb').innerHTML='<p class="muted">Saved orders stay here until you delete them. Tick one or more to delete.</p>'+ordersHtml(l);
+  $('sb').innerHTML='<p class="muted">'+(st.opts.hrs>0?'Saved orders are deleted automatically after '+st.opts.hrs+' hours, so share what you need first. ':'Saved orders stay until you delete them. ')+'Tick one or more to delete.</p>'+ordersHtml(l);
 }
 async function showMemberOrders(){
   let l=[];try{const q=await ordersCol(openId).orderBy('ts','desc').get();l=q.docs.map(d=>({id:d.id,...d.data()}))}catch(e){}
@@ -572,27 +572,44 @@ function ordActions(t,ouid,after){
 function drawSetup(){
   if(st.doors.length!==8){$('lsetup').innerHTML='<p class="muted">Loading...</p>';return}
   const src=knownList().sort((a,b)=>a.name.localeCompare(b.name));
-  $('lsetup').innerHTML=`<h2>Load setup</h2><p class="muted">Set your vehicle's door names, then each product's maximum load and door.</p><h3>Door names</h3>`+
+  $('lsetup').innerHTML=`<h2>Load setup</h2><p class="muted">Set your vehicle's door names, then each product's maximum load and door.</p><h3>Order rounding and cleanup</h3><label>Round direction (used with each product's Round step)</label><select id="odir"><option value="down">Down (never over the max)</option><option value="up" ${st.opts.dir==='up'?'selected':''}>Up</option><option value="near" ${st.opts.dir==='near'?'selected':''}>Nearest</option></select><label>Delete saved orders after (hours, 0 = never)</label><input id="ohr" type="number" value="${st.opts.hrs}"><h3>Door names</h3>`+
    st.doors.map((d,i)=>`<input data-dn="${i}" value="${esc(d)}">`).join('')+`<h3>Products</h3>`+
-   (src.length?src.map(r=>{const c=st.cfg[r.key]||{};return `<div class="row"><span>${esc(r.name)}</span><span style="display:flex;gap:6px"><input data-k="${r.key}" data-f="max" type="number" placeholder="Max" value="${c.max||''}" style="width:70px;margin:0;padding:6px"><select data-k="${r.key}" data-f="door" style="width:96px;margin:0;padding:6px"><option value="">Door</option>${st.doors.map((d,i)=>`<option value="${i}" ${c.door===i?'selected':''}>${esc(d)}</option>`).join('')}</select></span></div>`}).join(''):'<p class="muted">No products yet. Add products, or upload a night stock screenshot first.</p>')+
+   (src.length?src.map(r=>{const c=st.cfg[r.key]||{};return `<div class="row"><span>${esc(r.name)}</span><span style="display:flex;gap:6px"><input data-k="${r.key}" data-f="max" type="number" placeholder="Max" value="${c.max||''}" style="width:64px;margin:0;padding:6px"><input data-k="${r.key}" data-f="step" type="number" placeholder="Round" value="${c.step||''}" style="width:64px;margin:0;padding:6px"><select data-k="${r.key}" data-f="door" style="width:96px;margin:0;padding:6px"><option value="">Door</option>${st.doors.map((d,i)=>`<option value="${i}" ${c.door===i?'selected':''}>${esc(d)}</option>`).join('')}</select></span></div>`}).join(''):'<p class="muted">No products yet. Add products, or upload a night stock screenshot first.</p>')+
    `<p></p><button id="cfsave">Save setup</button><div class="muted" id="cfm"></div>`;
 }
 $('lsetup').onclick=ev=>{
   if(ev.target.id!=='cfsave')return;
   const b=db.batch(),cl=userDoc().collection('loadcfg');
-  st.doors=[...document.querySelectorAll('#lsetup [data-dn]')].map(x=>x.value.trim()||'Door');b.set(cl.doc('_doors'),{names:st.doors});
+  st.doors=[...document.querySelectorAll('#lsetup [data-dn]')].map(x=>x.value.trim()||'Door');b.set(cl.doc('_doors'),{names:st.doors});st.opts={dir:$('odir').value,hrs:parseFloat($('ohr').value)||0};b.set(cl.doc('_opts'),st.opts);
   knownList().forEach(r=>{
     const mx=document.querySelector(`#lsetup [data-k="${r.key}"][data-f=max]`),dr=document.querySelector(`#lsetup [data-k="${r.key}"][data-f=door]`);if(!mx)return;
-    const c={name:r.name,max:parseFloat(mx.value)||0,door:dr.value===''?null:+dr.value};st.cfg[r.key]=c;b.set(cl.doc(r.key),c);
+    const c={name:r.name,max:parseFloat(mx.value)||0,step:parseFloat(document.querySelector(`#lsetup [data-k="${r.key}"][data-f=step]`).value)||0,door:dr.value===''?null:+dr.value};st.cfg[r.key]=c;b.set(cl.doc(r.key),c);
   });
   b.commit().then(()=>$('cfm').textContent='Saved.').catch(e=>$('cfm').textContent=e.message);
 };
-let st={v:'order',stage:'pick',cfg:{},doors:[],night:null,order:null,rows:null,html:''};
+const VER='v1.9';
+document.querySelectorAll('.ver').forEach(e=>e.textContent=VER);
+function calcNeed(rem,c){
+  let n=Math.max(0,c.max-rem);const k=c.step||0;
+  if(k>0){const q=n/k;n=(st.opts.dir==='up'?Math.ceil(q):st.opts.dir==='near'?Math.round(q):Math.floor(q))*k}
+  return n;
+}
+function rebuild(){document.querySelectorAll('#sb [data-o]').forEach(x=>{x.value=calcNeed(+x.dataset.rem,st.cfg[x.dataset.o])})}
+async function cleanOrders(){
+  const h=st.opts.hrs;if(!(h>0))return;
+  try{
+    const q=await ordersCol(uid).get(),lim=Date.now()-h*3600000,b=db.batch();let n=0;
+    q.docs.forEach(d=>{const t=new Date(d.data().ts).getTime();if(t&&t<lim){b.delete(d.ref);n++}});
+    if(n)await b.commit();
+  }catch(e){}
+}
+let st={opts:{dir:'down',hrs:12},v:'order',stage:'pick',cfg:{},doors:[],night:null,order:null,rows:null,html:''};
 const stk=()=>userDoc().collection('stock');
 async function loadStock(){
-  try{const q=await userDoc().collection('loadcfg').get();q.docs.forEach(d=>{if(d.id==='_doors')st.doors=d.data().names;else st.cfg[d.id]=d.data()})}catch(e){}
+  try{const q=await userDoc().collection('loadcfg').get();q.docs.forEach(d=>{if(d.id==='_doors')st.doors=d.data().names;else if(d.id==='_opts')st.opts=d.data();else st.cfg[d.id]=d.data()})}catch(e){}
   if(!st.doors||st.doors.length!==8)st.doors=[1,2,3,4,5,6,7,8].map(i=>'Door '+i);
   try{const d=await stk().doc('night').get();st.night=d.exists?d.data():null}catch(e){}
+  await cleanOrders();
   try{const q=await ordersCol(uid).orderBy('ts','desc').limit(1).get();st.order=q.empty?null:q.docs[0].data()}catch(e){}
   drawStock();
 }
@@ -620,7 +637,7 @@ function drawSB(){
   b.innerHTML=`<p class="muted">${NOTE[st.v]}</p><button id="sup">Choose screenshot</button><div class="muted" id="sst"></div>`;
 }
 function drawReview(){
-  $('sb').innerHTML=`<p class="muted">${st.rows.length} products read. Check the numbers and fix any mistakes.</p>`+
+  $('sb').innerHTML=`<h3>Step 1: check the numbers</h3><p class="muted">${st.rows.length} products read. Fix any mistakes, then tap Use these numbers at the bottom. The order is worked out after that.</p>`+
    `<div class="row"><b>Product</b><b>Orig / Rem</b></div>`+st.rows.map((r,i)=>`<div class="row"><span>${esc(r.name)}</span><span style="display:flex;gap:6px"><input data-i="${i}" data-f="orig" type="number" step="any" value="${r.orig}" style="width:76px;margin:0;padding:6px"><input data-i="${i}" data-f="rem" type="number" step="any" value="${r.rem}" style="width:76px;margin:0;padding:6px"></span></div>`).join('')+
    `${missingHtml()}<p></p><button id="sok">Use these numbers</button><button id="sagain" class="alt">Cancel</button>`;
 }
@@ -629,8 +646,8 @@ function drawOrder(){
   rows.sort((a,b)=>(st.cfg[a.key].door??9)-(st.cfg[b.key].door??9));let last='',h='';
   rows.forEach(r=>{const c=st.cfg[r.key],d=c.door===''||c.door==null?'No door':st.doors[c.door];
     if(d!==last){h+=`<h3>${esc(d)}</h3>`;last=d}
-    h+=`<div class="row"><span>${esc(r.name)}<br><span class="muted">Remaining ${r.rem}, max ${c.max}</span></span><input data-o="${r.key}" data-n="${esc(r.name)}" data-d="${d}" type="number" step="any" value="${Math.max(0,c.max-r.rem)}" style="width:80px;margin:0"></div>`});
-  $('sb').innerHTML=`<p class="muted">Order = max load minus remaining. Change any quantity you want.${no?' '+no+' products have no max set (see Load setup).':''}</p>${h||'<p>No products have a max load yet. Set them in Load setup.</p>'}<p></p><button id="osave">Save order</button><button id="oshare" class="alt">Share on WhatsApp</button>`;
+    h+=`<div class="row"><span>${esc(r.name)}<br><span class="muted">Remaining ${r.rem}, max ${c.max}${c.step?', round '+c.step:''}</span></span><input data-o="${r.key}" data-n="${esc(r.name)}" data-d="${d}" type="number" step="any" value="${calcNeed(r.rem,c)}" data-rem="${r.rem}" style="width:80px;margin:0"></div>`});
+  $('sb').innerHTML=`<p class="muted">Order = max load minus remaining. Change any quantity you want.${no?' '+no+' products have no max set (see Load setup).':''}</p>${h||'<p>No products have a max load yet. Set them in Load setup.</p>'}<p></p><button id="osave">Save order</button><button id="orb" class="alt">Rebuild automatically</button><button id="oshare" class="alt">Share on WhatsApp</button>`;
 }
 function compare(m){
   const nm={},od={};((st.night&&st.night.rows)||[]).forEach(r=>nm[r.key]=r);((st.order&&st.order.rows)||[]).forEach(r=>od[r.key]=r.qty);
@@ -650,12 +667,14 @@ function pickShot(){
 $('stock').onclick=ev=>{
   const t=ev.target;
   ordActions(t,uid,drawOrders);
-  if(t.id==='sup')pickShot();
+  if(t.id==='orb')rebuild();
+  else if(t.id==='sup')pickShot();
   else if(t.id==='sagain'){st.stage='pick';st.rows=null;drawSB()}
   else if(t.id==='sok'){
     document.querySelectorAll('#sb [data-i]').forEach(x=>st.rows[x.dataset.i][x.dataset.f]=parseFloat(x.value)||0);
     const mm={};document.querySelectorAll('#sb [data-m]').forEach(x=>{(mm[x.dataset.m]=mm[x.dataset.m]||{})[x.dataset.f]=x.value});
     Object.keys(mm).forEach(i=>{if(mm[i].orig!==''||mm[i].rem!==''){const k=st.missing[i];st.rows.push({key:k.key,name:k.name,orig:parseFloat(mm[i].orig)||0,rem:parseFloat(mm[i].rem)||0})}});
+    st.rows.forEach(r=>{const p=prods.find(x=>keyOf(x.code)===r.key);if(p&&p.name)r.name=p.name});
     offerNew(st.rows);
     const d={date:ymd(new Date()),rows:st.rows};
     if(st.v==='order'){stk().doc('evening').set(d).catch(()=>{});st.stage='order';drawSB()}

@@ -256,7 +256,9 @@ $('mem').onclick=async ev=>{
 let prods=[],pq='',pcat='',pedit=null;
 const idOf=c=>String(c).trim().replace(/\//g,'-');
 const money=n=>Number(n).toLocaleString('en',{maximumFractionDigits:2});
+let reqs=[];
 function watchProducts(){
+  if(me.role==='admin')db.collection('productRequests').onSnapshot(s=>{reqs=s.docs.map(d=>({id:d.id,...d.data()}));if(pedit===null)drawProds()},()=>{});
   db.collection('products').orderBy('name').onSnapshot(s=>{prods=s.docs.map(d=>({id:d.id,...d.data()}));if(pedit===null)drawProds()},()=>{});
 }
 function drawList(){
@@ -279,7 +281,7 @@ function drawProds(){
     <div class="err" id="pmsg2"></div><button id="psave">Save</button><button id="pcancel" class="alt">Cancel</button>${pedit?'<button id="pdel" class="alt">Delete product</button>':''}`;
     return;
   }
-  $('prod').innerHTML=`<h2>Products</h2><input id="pq" placeholder="Search name or code" value="${esc(pq)}">
+  $('prod').innerHTML=`<h2>Products</h2>${pendHtml()}<input id="pq" placeholder="Search name or code" value="${esc(pq)}">
   <select id="pc"><option value="">All categories</option>${cats.map(c=>`<option ${c===pcat?'selected':''}>${esc(c)}</option>`).join('')}</select>`+
   (admin?`<button id="padd">Add product</button><button id="pimp" class="alt">Import from Excel</button><button id="ptpl" class="alt">Download Excel template</button><input id="pfile" type="file" accept=".xlsx,.xls,.csv" class="hidden"><div class="err" id="pmsg2"></div>`:'')+`<div id="plist"></div>`;
   drawList();
@@ -308,7 +310,8 @@ function template(){
 }
 $('prod').onclick=ev=>{
   const t=ev.target;
-  if(t.id==='padd'){pedit='';drawProds()}
+  if(t.dataset.ap||t.dataset.rj){const r=reqs.find(x=>x.id===(t.dataset.ap||t.dataset.rj));if(r){if(t.dataset.ap&&!prods.some(p=>p.id===idOf(r.code)))db.collection('products').doc(idOf(r.code)).set({code:r.code,name:r.name,pack:r.pack||'',unit:r.unit||'Carton',category:'',price:null},{merge:true}).catch(e=>alert(e.message));db.collection('productRequests').doc(r.id).delete().catch(()=>{})}}
+  else if(t.id==='padd'){pedit='';drawProds()}
   else if(t.dataset.pe){pedit=t.dataset.pe;drawProds()}
   else if(t.id==='pcancel'){pedit=null;drawProds()}
   else if(t.id==='pimp')$('pfile').click();
@@ -498,7 +501,8 @@ function parseStock(text){
     if(!cur)return;const m=cur.rest.match(/(\d{4})/)||cur.first.match(/-\s?(\d{4})\b/);if(!m)return;
     const key=(/FG[-\s]*SA/i.test(cur.first)?'SA':'ICE')+m[1];if(seen[key])return;seen[key]=1;
     const name=(cur.first.replace(/^FG[-\s]*(ICE|SA)?\s*/i,'')+' '+cur.rest.replace(/^\s*[A-Z]?\s*-?\s*\d{4}\s*/,'')).replace(/\s+/g,' ').trim();
-    rows.push({key,name,orig:cur.orig,rem:cur.rem});
+    const cm=cur.rest.match(/^\s*([A-Z]?)\s*-?\s*(\d{4})/),pre=key.startsWith('SA')?'SA':'ICE';
+    rows.push({key,code:'FG-'+pre+(pre==='SA'&&cm&&cm[1]?cm[1]:'')+'-'+m[1],name,orig:cur.orig,rem:cur.rem});
   };
   for(const l of text.split('\n').map(x=>x.trim()).filter(Boolean)){
     const m=l.match(/(\d{1,5}[.,]\d{3})\s+(\d{1,5}[.,]\d{3})\s*$/);
@@ -506,6 +510,30 @@ function parseStock(text){
     else if(cur)cur.rest+=' '+l;
   }
   fin();return rows;
+}
+const keyOf=c=>{const d=(String(c).match(/(\d{4})\s*$/)||[])[1];return d?((/^FG[-\s]*SA/i.test(c)?'SA':'ICE')+d):null};
+function knownList(){
+  const m={};((st.night&&st.night.rows)||[]).forEach(r=>m[r.key]={key:r.key,name:r.name});
+  prods.forEach(p=>{const k=keyOf(p.code);if(k)m[k]={key:k,name:p.name}});return Object.values(m);
+}
+function missingHtml(){
+  const have=new Set(st.rows.map(r=>r.key));st.missing=knownList().filter(k=>!have.has(k.key));
+  return st.missing.length?`<h3>Not read (${st.missing.length})</h3><p class="muted">If any of these are in the screenshot, type their numbers.</p>`+st.missing.map((k,i)=>`<div class="row"><span>${esc(k.name)}</span><span style="display:flex;gap:6px"><input data-m="${i}" data-f="orig" type="number" step="any" placeholder="Orig" style="width:76px;margin:0;padding:6px"><input data-m="${i}" data-f="rem" type="number" step="any" placeholder="Rem" style="width:76px;margin:0;padding:6px"></span></div>`).join(''):'';
+}
+function offerNew(rows){
+  const have=new Set(prods.map(p=>keyOf(p.code))),nw=rows.filter(r=>r.code&&!have.has(r.key));if(!nw.length)return;
+  const mk=r=>{const pm=r.name.match(/\s(\d+[*x]\S.*)$/);return{code:r.code,name:r.name,pack:pm?pm[1]:'',unit:'Carton',category:'',price:null}};
+  if(me.role==='admin'){
+    if(confirm(nw.length+' products are not in your Products list yet. Add them now with the price empty?')){
+      const b=db.batch();nw.forEach(r=>b.set(db.collection('products').doc(idOf(r.code)),mk(r),{merge:true}));b.commit().catch(e=>alert(e.message));
+    }
+  }else{
+    nw.forEach(r=>db.collection('productRequests').doc(idOf(r.code)).set({...mk(r),uid}).catch(()=>{}));
+    alert(nw.length+' new products were sent to the admin for approval.');
+  }
+}
+function pendHtml(){
+  return me.role==='admin'&&reqs.length?`<h3>Waiting for approval (${reqs.length})</h3>`+reqs.map(r=>`<div class="row"><span>${esc(r.name)}<br><span class="muted">${esc(r.code)}</span></span><span><a data-ap="${esc(r.id)}">Approve</a><a data-rj="${esc(r.id)}">Reject</a></span></div>`).join('')+'<p></p>':'';
 }
 let st={v:'order',stage:'pick',cfg:{},doors:[],night:null,order:null,rows:null,html:''};
 const stk=()=>userDoc().collection('stock');
@@ -520,7 +548,7 @@ async function ocr(file,say){
   say('Loading the reader (needs internet the first time)...');
   const w=await Tesseract.createWorker('eng');await w.setParameters({tessedit_pageseg_mode:'6'});
   for(let y=0,i=1;y<H;y+=S-O,i++){
-    const h=Math.min(S,H-y),c=document.createElement('canvas');c.width=W;c.height=h;c.getContext('2d').drawImage(img,0,y,W,h,0,0,W,h);
+    const h=Math.min(S,H-y),c=document.createElement('canvas');c.width=W;c.height=h;const cx=c.getContext('2d');cx.drawImage(img,0,y,W,h,0,0,W,h);const id=cx.getImageData(0,0,W,h),a=id.data;for(let j=0;j<a.length;j+=4){const g=.3*a[j]+.59*a[j+1]+.11*a[j+2],v=g<125?0:255;a[j]=a[j+1]=a[j+2]=v}cx.putImageData(id,0,0);
     say('Reading part '+i+'...');txt.push((await w.recognize(c)).data.text);if(y+h>=H)break;
   }
   await w.terminate();return parseStock(txt.join('\n'));
@@ -541,7 +569,7 @@ function drawSB(){
 function drawReview(){
   $('sb').innerHTML=`<p class="muted">${st.rows.length} products read. Check the numbers and fix any mistakes.</p>`+
    `<div class="row"><b>Product</b><b>Orig / Rem</b></div>`+st.rows.map((r,i)=>`<div class="row"><span>${esc(r.name)}</span><span style="display:flex;gap:6px"><input data-i="${i}" data-f="orig" type="number" step="any" value="${r.orig}" style="width:76px;margin:0;padding:6px"><input data-i="${i}" data-f="rem" type="number" step="any" value="${r.rem}" style="width:76px;margin:0;padding:6px"></span></div>`).join('')+
-   `<p></p><button id="sok">Use these numbers</button><button id="sagain" class="alt">Cancel</button>`;
+   `${missingHtml()}<p></p><button id="sok">Use these numbers</button><button id="sagain" class="alt">Cancel</button>`;
 }
 function drawOrder(){
   const rows=st.rows.filter(r=>st.cfg[r.key]&&st.cfg[r.key].max>0),no=st.rows.length-rows.length;
@@ -578,6 +606,9 @@ $('stock').onclick=ev=>{
   else if(t.id==='sagain'){st.stage='pick';st.rows=null;drawSB()}
   else if(t.id==='sok'){
     document.querySelectorAll('#sb [data-i]').forEach(x=>st.rows[x.dataset.i][x.dataset.f]=parseFloat(x.value)||0);
+    const mm={};document.querySelectorAll('#sb [data-m]').forEach(x=>{(mm[x.dataset.m]=mm[x.dataset.m]||{})[x.dataset.f]=x.value});
+    Object.keys(mm).forEach(i=>{if(mm[i].orig!==''||mm[i].rem!==''){const k=st.missing[i];st.rows.push({key:k.key,name:k.name,orig:parseFloat(mm[i].orig)||0,rem:parseFloat(mm[i].rem)||0})}});
+    offerNew(st.rows);
     const d={date:ymd(new Date()),rows:st.rows};
     if(st.v==='order'){stk().doc('evening').set(d).catch(()=>{});st.stage='order';drawSB()}
     else if(st.v==='night'){stk().doc('night').set(d).catch(e=>alert(e.message));st.night=d;st.html='<p>Night stock saved ('+d.rows.length+' products). Use Load setup to set max loads.</p>';st.stage='done';drawSB()}

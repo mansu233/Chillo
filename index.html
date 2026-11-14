@@ -17,7 +17,8 @@ button.alt{background:#fff;color:var(--ink);border:1px solid var(--line)}
 label{font-size:14px;font-weight:600}
 nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 nav button{margin:0;border-radius:0;background:none;color:var(--ink);opacity:.6;padding:14px 4px}
-nav button{font-size:14px}
+nav{overflow-x:auto}
+nav button{font-size:14px;flex:1 0 auto;padding:14px 12px}
 nav button.on{opacity:1;box-shadow:inset 0 3px 0 var(--pink)}
 .big{font-size:40px;font-weight:700;margin-bottom:8px}
 .row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -50,6 +51,7 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 <div class="err" id="aerr"></div><button id="save">Save sale</button></section>
 <section id="mem" class="hidden"></section>
 <section id="prod" class="hidden"></section>
+<section id="cust" class="hidden"></section>
 <section id="set" class="hidden"><h2>Settings</h2>
 <div id="tgbox"><label>Monthly target (SAR)</label><input id="tg" type="number" inputmode="decimal">
 <button id="stg" class="alt">Save target</button></div>
@@ -59,7 +61,7 @@ a{color:var(--blue);font-weight:600;margin-left:10px;cursor:pointer}
 <div class="err" id="pmsg"></div><button id="cp" class="alt">Change password</button>
 <button id="out2">Sign out</button></section>
 </main>
-<nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button></nav>
+<nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button><button data-t="cust" id="tcust" class="hidden">Customers</button></nav>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -85,7 +87,7 @@ const sales=()=>userDoc().collection('sales');
 
 function show(id){['login','wait','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
 function tab(t){
-  ['home','add','set','mem','prod'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
+  ['home','add','set','mem','prod','cust'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
 }
 function reset(){editId=null;$('amt').value='';$('note').value='';$('aerr').textContent='';$('date').value=ymd(new Date());$('save').textContent='Save sale'}
@@ -116,7 +118,7 @@ function start(){
   unsub&&unsub();
   unsub=sales().where('date','>=',a).where('date','<=',b).orderBy('date','desc')
     .onSnapshot(s=>{entries=s.docs.map(d=>({id:d.id,...d.data()}));render()});
-  reset();$('tg').value=me.target||'';fillAreas();applyAccess();if(me.role==='admin')watchMembers();if(can('prod.view'))watchProducts();
+  reset();$('tg').value=me.target||'';fillAreas();applyAccess();if(me.role==='admin')watchMembers();if(can('prod.view'))watchProducts();if(can('cust.view'))watchCusts();
 }
 
 function render(){
@@ -177,6 +179,7 @@ $('cp').onclick=async()=>{
 const PERMS={
  'Sales':[['sales.add','Add daily sales'],['sales.edit','Edit sale entries'],['sales.delete','Delete sale entries'],['sales.report','See monthly report']],
  'Products':[['prod.view','View products'],['prod.price','View prices']],
+ 'Customers':[['cust.view','View customers and mark visits'],['cust.add','Add customers'],['cust.edit','Edit customers'],['cust.delete','Delete customers']],
  'Settings':[['set.target','Set own monthly target'],['set.areas','Manage own areas']]};
 const can=k=>me.role==='admin'||!!(me.perms&&me.perms[k]);
 let members=[],openId=null;
@@ -185,6 +188,7 @@ function applyAccess(){
   document.querySelector('[data-t=add]').classList.toggle('hidden',!can('sales.add'));
   $('tmem').classList.toggle('hidden',me.role!=='admin');
   $('tprod').classList.toggle('hidden',!can('prod.view'));
+  $('tcust').classList.toggle('hidden',!can('cust.view'));
   $('tgbox').classList.toggle('hidden',!can('set.target'));
   $('arbox').classList.toggle('hidden',!can('set.areas'));
 }
@@ -316,6 +320,100 @@ $('prod').oninput=ev=>{if(ev.target.id==='pq'){pq=ev.target.value;drawList()}};
 $('prod').onchange=ev=>{
   if(ev.target.id==='pc'){pcat=ev.target.value;drawList()}
   if(ev.target.id==='pfile'&&ev.target.files[0]){importFile(ev.target.files[0]);ev.target.value=''}
+};
+
+let cs=[],cmode='list',cid=null,cshow='all',csort='az',cq='',pos=null,ed={};
+const DAYS=[[6,'Sat'],[0,'Sun'],[1,'Mon'],[2,'Tue'],[3,'Wed'],[4,'Thu']];
+const dn=d=>(DAYS.find(x=>x[0]===d)||[0,'?'])[1];
+const custs=()=>userDoc().collection('customers');
+const stamp=()=>{const d=new Date();return ymd(d)+'T'+pad(d.getHours())+':'+pad(d.getMinutes())};
+function watchCusts(){custs().orderBy('name').onSnapshot(s=>{cs=s.docs.map(d=>({id:d.id,...d.data()}));if(cmode==='list')drawCust();if(cmode==='view')drawView()},()=>{})}
+function parseLoc(t){
+  t=String(t||'');const m=t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)||t.match(/[?&](?:q|ll|query)=(-?\d+\.\d+)(?:,|%2C)(-?\d+\.\d+)/)||t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)||t.match(/^\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*$/);
+  return m?{lat:+m[1],lng:+m[2]}:null;
+}
+function dist(c){
+  if(!pos||c.lat==null)return null;const r=x=>x*Math.PI/180,dl=r(c.lat-pos.lat),dg=r(c.lng-pos.lng);
+  const a=Math.sin(dl/2)**2+Math.cos(r(pos.lat))*Math.cos(r(c.lat))*Math.sin(dg/2)**2;return 6371*2*Math.asin(Math.sqrt(a));
+}
+function missed(c){
+  if(c.type!=='fixed')return false;const t=new Date(),ws=new Date(t.getFullYear(),t.getMonth(),t.getDate()-((t.getDay()+1)%7));
+  return (c.days||[]).some(dd=>{const d=new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+(dd+1)%7);return ymd(d)<ymd(t)&&(c.lastVisit||'')<ymd(d)});
+}
+function isToday(c){
+  return (c.type==='fixed'&&(c.days||[]).includes(new Date().getDay()))||(c.type==='call'&&c.calledAt&&c.calledAt>(c.lastVisit||''));
+}
+function drawCust(){
+  if(cmode==='edit')return drawEdit();if(cmode==='view')return drawView();
+  $('cust').innerHTML=`<h2>Customers</h2><input id="cq" placeholder="Search shop, owner or phone" value="${esc(cq)}">
+  <label>Show</label><select id="cs">${[['all','All'],['today',"Today's route"],...DAYS.map(([d,t])=>['d'+d,t]),['random','Random days'],['call','On call'],['missed','Missed visit this week']].map(([v,t])=>`<option value="${v}" ${v===cshow?'selected':''}>${t}</option>`).join('')}</select>
+  <label>Order</label><select id="co2"><option value="az">A to Z</option><option value="near" ${csort==='near'?'selected':''}>Nearest first</option></select>
+  ${can('cust.add')?'<button id="cadd">Add customer</button>':''}<div id="clist"></div>`;
+  drawCList();
+}
+function drawCList(){
+  const q=cq.toLowerCase();
+  let l=cs.filter(c=>(!q||((c.name||'')+' '+(c.owner||'')+' '+(c.phone||'')).toLowerCase().includes(q))&&
+    (cshow==='all'||(cshow==='today'&&isToday(c))||(cshow[0]==='d'&&c.type==='fixed'&&(c.days||[]).includes(+cshow.slice(1)))||(cshow==='random'&&c.type==='random')||(cshow==='call'&&c.type==='call')||(cshow==='missed'&&missed(c))));
+  if(csort==='near'&&pos)l.sort((a,b)=>(dist(a)??1e9)-(dist(b)??1e9));
+  $('clist').innerHTML=`<div class="muted">${l.length} customers</div>`+l.map(c=>{const d=dist(c);
+    return `<div class="row" data-v="${c.id}"><span><b>${esc(c.name)}</b><br><span class="muted">${esc(c.area||'No area')}, ${c.type==='fixed'?(c.days||[]).map(dn).join(' '):c.type==='call'?'On call':'Random'}</span></span>
+    <span class="muted">${d!=null?d.toFixed(1)+' km':''}${missed(c)?'<br>Missed':''}</span></div>`}).join('');
+}
+function drawView(){
+  const c=cs.find(x=>x.id===cid);if(!c){cmode='list';return drawCust()}
+  const nav=c.lat!=null?`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`:(c.link||'');
+  const typ=c.type==='fixed'?'Fixed day: '+(c.days||[]).map(dn).join(', '):c.type==='call'?'On call':'Random days';
+  $('cust').innerHTML=`<a id="cback" style="margin:0">Back to customers</a><h2>${esc(c.name)}</h2>
+  <div class="row"><span>Owner</span><b>${esc(c.owner||'-')}</b></div><div class="row"><span>Phone</span><b>${esc(c.phone||'-')}</b></div>
+  <div class="row"><span>Area</span><b>${esc(c.area||'-')}</b></div><div class="row"><span>Visits</span><b>${typ}</b></div>
+  <div class="row"><span>Last visit</span><b>${c.lastVisit?c.lastVisit.replace('T',' '):'Never'}</b></div>
+  ${c.notes?`<div class="row"><span>Notes</span><b>${esc(c.notes)}</b></div>`:''}<p></p>
+  <button id="cvis">Mark visited</button>${c.type==='call'?'<button id="ccall" class="alt">Customer called, visit today</button>':''}
+  ${nav?`<button class="alt" data-go="${esc(nav)}">Navigate</button>`:''}${c.phone?`<button class="alt" data-go="tel:${esc(c.phone)}">Call</button><button class="alt" data-go="https://wa.me/${String(c.phone).replace(/\D/g,'')}">WhatsApp</button>`:''}
+  ${can('cust.edit')?'<button id="cedit" class="alt">Edit</button>':''}`;
+}
+function drawEdit(){
+  const c=cs.find(x=>x.id===cid)||{type:'fixed',days:[]};ed={lat:c.lat??null,lng:c.lng??null,link:c.link||''};
+  $('cust').innerHTML=`<h2>${cid?'Edit customer':'Add customer'}</h2>
+  <label>Shop name</label><input id="cn" value="${esc(c.name)}"><label>Owner name</label><input id="cow" value="${esc(c.owner)}">
+  <label>Phone</label><input id="cph" type="tel" value="${esc(c.phone)}">
+  <label>Area</label><select id="car"><option value="">No area</option>${me.areas.map(a=>`<option ${a===c.area?'selected':''}>${esc(a)}</option>`).join('')}</select>
+  <label>Visit type</label><select id="cty">${[['fixed','Fixed day'],['random','Random days'],['call','On call']].map(([v,t])=>`<option value="${v}" ${v===c.type?'selected':''}>${t}</option>`).join('')}</select>
+  <label>Visit days (for fixed day)</label><div style="margin:6px 0 12px">${DAYS.map(([d,t])=>`<label style="margin-right:12px"><input type="checkbox" data-d="${d}" style="display:inline-block;vertical-align:middle" ${(c.days||[]).includes(d)?'checked':''}> ${t}</label>`).join('')}</div>
+  <label>Location</label><button id="cgps" class="alt">Use my GPS here</button>
+  <input id="clk" placeholder="Or paste a Google Maps or WhatsApp location link" value="${esc(c.link)}"><div class="muted" id="cloc">${ed.lat!=null?'Location saved':'No location yet'}</div>
+  <label>Notes</label><input id="cno" value="${esc(c.notes)}"><div class="err" id="cmsg"></div>
+  <button id="csave">Save</button><button id="ccancel" class="alt">Cancel</button>${cid&&can('cust.delete')?'<button id="cdel" class="alt">Delete customer</button>':''}`;
+}
+function getPos(cb){
+  navigator.geolocation.getCurrentPosition(p=>{pos={lat:p.coords.latitude,lng:p.coords.longitude};cb(pos)},()=>alert('Could not get your location. Allow location access for this site.'),{enableHighAccuracy:true,timeout:15000});
+}
+$('cust').onclick=ev=>{
+  const t=ev.target,row=t.closest('[data-v]');
+  if(t.dataset.go){t.dataset.go.startsWith('tel:')?location.href=t.dataset.go:window.open(t.dataset.go,'_blank');return}
+  if(row){cid=row.dataset.v;cmode='view';drawView();return}
+  if(t.id==='cadd'){cid=null;cmode='edit';drawEdit()}
+  else if(t.id==='cback'||t.id==='ccancel'){cmode=cid&&t.id==='ccancel'?'view':'list';cmode==='view'?drawView():drawCust()}
+  else if(t.id==='cedit'){cmode='edit';drawEdit()}
+  else if(t.id==='cvis')custs().doc(cid).update({lastVisit:stamp()}).catch(e=>alert(e.message));
+  else if(t.id==='ccall')custs().doc(cid).update({calledAt:stamp()}).catch(e=>alert(e.message));
+  else if(t.id==='cgps')getPos(p=>{ed.lat=p.lat;ed.lng=p.lng;$('cloc').textContent='GPS location captured'});
+  else if(t.id==='cdel'&&confirm('Delete this customer?')){custs().doc(cid).delete().catch(e=>alert(e.message));cid=null;cmode='list';drawCust()}
+  else if(t.id==='csave'){
+    const name=$('cn').value.trim();if(!name){$('cmsg').textContent='Enter the shop name.';return}
+    const data={name,owner:$('cow').value.trim(),phone:$('cph').value.trim(),area:$('car').value,type:$('cty').value,notes:$('cno').value.trim(),
+      days:[...document.querySelectorAll('#cust [data-d]:checked')].map(c=>+c.dataset.d),lat:ed.lat,lng:ed.lng,link:$('clk').value.trim()};
+    (cid?custs().doc(cid).update(data):custs().add({...data,lastVisit:'',created:stamp()})).catch(e=>alert(e.message));
+    cmode=cid?'view':'list';cmode==='view'?drawView():drawCust();
+  }
+};
+$('cust').oninput=ev=>{if(ev.target.id==='cq'){cq=ev.target.value;drawCList()}};
+$('cust').onchange=ev=>{
+  const i=ev.target.id;
+  if(i==='cs'){cshow=ev.target.value;drawCList()}
+  if(i==='co2'){csort=ev.target.value;csort==='near'&&!pos?getPos(drawCList):drawCList()}
+  if(i==='clk'){const l=parseLoc(ev.target.value);if(l){ed.lat=l.lat;ed.lng=l.lng;$('cloc').textContent='Location read from link'}else $('cloc').textContent=ev.target.value?'Link saved. Coordinates could not be read, so use GPS once at the shop for nearest-first.':''}
 };
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');

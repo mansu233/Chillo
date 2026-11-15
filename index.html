@@ -4,36 +4,39 @@
 <meta name="theme-color" content="#2BB5E8"><meta name="color-scheme" content="light dark">
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg">
 <title>Chillo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400..800&display=swap" rel="stylesheet">
+<script>try{document.documentElement.style.setProperty('--fs',localStorage.getItem('chillo_fs')||'1')}catch(e){}</script>
 <style>
 :root{--blue:#2BB5E8;--blue2:#1B8FBF;--ink:#0F3B52;--pink:#FF7BAC;--bg:#EAF7FD;--bg2:#F8FCFE;--card:#FFFFFF;--input:#F4FAFD;--line:#D8EAF2;--bad:#C0392B;--shadow:0 6px 20px rgba(15,59,82,.08)}
 @media (prefers-color-scheme:dark){:root{--ink:#E6F3F9;--bg:#0A1A24;--bg2:#0E2331;--card:#12303F;--input:#0E2735;--line:#24485A;--shadow:0 6px 20px rgba(0,0,0,.35)}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;font:16px/1.45 system-ui,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:linear-gradient(180deg,var(--bg),var(--bg2)) fixed;min-height:100vh}
-header{background:linear-gradient(135deg,#1B9CD6,#4FC6F2);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 18px 14px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:22px;border-radius:0 0 22px 22px;box-shadow:0 6px 18px rgba(27,143,191,.35)}
+html{font-size:calc(16px*var(--fs,1))}
+body{margin:0;font:1rem/1.45 Cairo,system-ui,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:linear-gradient(180deg,var(--bg),var(--bg2)) fixed;min-height:100vh}
+header{background:linear-gradient(135deg,#1B9CD6,#4FC6F2);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 18px 14px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:1.375rem;border-radius:0 0 22px 22px;box-shadow:0 6px 18px rgba(27,143,191,.35)}
 main{padding:16px;max-width:520px;margin:0 auto 100px}
 main section{background:var(--card);border-radius:20px;padding:18px;box-shadow:var(--shadow)}
 .hero{text-align:center;padding-top:56px}.hero input{text-align:left}
 .hidden{display:none!important}
-h1{font-size:30px;margin:6px 0}h2{font-size:22px;margin:0 0 12px}
-h3{font-size:13px;margin:20px 0 6px;text-transform:uppercase;letter-spacing:.06em;color:var(--blue2)}
+h1{font-size:1.875rem;margin:6px 0}h2{font-size:1.375rem;margin:0 0 12px}
+h3{font-size:.8125rem;margin:20px 0 6px;text-transform:uppercase;letter-spacing:.06em;color:var(--blue2)}
 input,select,button{font:inherit;width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:14px;background:var(--input);color:var(--ink);margin:4px 0 12px;outline:none}
 input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(43,181,232,.2)}
 button{background:linear-gradient(135deg,#2BB5E8,#1B8FBF);color:#fff;border:0;font-weight:700;box-shadow:0 4px 12px rgba(27,143,191,.3)}
 button:active{transform:scale(.98)}
 button.alt{background:var(--card);color:var(--blue2);border:1.5px solid var(--blue);box-shadow:none}
 #cdel,#pdel,#odel,#rclr{color:var(--bad);border-color:#E9B4AD}
-label{font-size:13px;font-weight:700;opacity:.85}
-.big{font-size:42px;font-weight:800;margin:2px 0 10px;background:linear-gradient(90deg,var(--ink),var(--blue2));-webkit-background-clip:text;background-clip:text;color:transparent}
+label{font-size:.8125rem;font-weight:700;opacity:.85}
+.big{font-size:2.625rem;font-weight:800;margin:2px 0 10px;background:linear-gradient(90deg,var(--ink),var(--blue2));-webkit-background-clip:text;background-clip:text;color:transparent}
 .row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
 .bar{height:12px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:6px}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,#FF7BAC,#FFA46B);border-radius:6px}
-.muted{opacity:.65;font-size:14px}.err{color:var(--bad);font-size:14px;min-height:18px}
-a{color:var(--blue2);background:rgba(43,181,232,.12);padding:4px 11px;border-radius:999px;font-size:13px;font-weight:700;margin-left:8px;cursor:pointer;white-space:nowrap}
+.muted{opacity:.65;font-size:.875rem}.err{color:var(--bad);font-size:.875rem;min-height:18px}
+a{color:var(--blue2);background:rgba(43,181,232,.12);padding:4px 11px;border-radius:999px;font-size:.8125rem;font-weight:700;margin-left:8px;cursor:pointer;white-space:nowrap}
 input[type=checkbox]{width:24px;height:24px;margin:0;flex:none;accent-color:#1B8FBF}
 details summary{cursor:pointer;font-weight:600}
 nav{position:fixed;bottom:0;left:0;right:0;display:flex;overflow-x:auto;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -6px 18px rgba(15,59,82,.08)}
 nav::-webkit-scrollbar{display:none}
-nav button{margin:0;border-radius:0;background:none;box-shadow:none;color:var(--ink);opacity:.55;flex:1 0 auto;width:auto;min-width:72px;white-space:nowrap;font-size:11px;font-weight:600;padding:9px 8px 10px;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button{margin:0;border-radius:0;background:none;box-shadow:none;color:var(--ink);opacity:.55;flex:1 0 auto;width:auto;min-width:72px;white-space:nowrap;font-size:.6875rem;font-weight:600;padding:9px 8px 10px;display:flex;flex-direction:column;align-items:center;gap:3px}
 nav button.on{opacity:1;color:var(--blue2);box-shadow:inset 0 3px 0 var(--pink)}
 </style></head><body>
 
@@ -70,6 +73,7 @@ nav button.on{opacity:1;color:var(--blue2);box-shadow:inset 0 3px 0 var(--pink)}
 <input id="na" placeholder="New area, for example Jeddah"><button id="aa" class="alt">Add area</button></div>
 <label>New 6-digit password</label><input id="np" type="password" inputmode="numeric" maxlength="6">
 <div class="err" id="pmsg"></div><button id="cp" class="alt">Change password</button>
+<label>Text size</label><select id="fsz"><option value="0.9">Small</option><option value="1">Normal</option><option value="1.12">Large</option><option value="1.25">Extra large</option></select>
 <p class="muted">Chillo <span class="ver"></span></p><button id="out2">Sign out</button></section>
 </main>
 <nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button><button data-t="cust" id="tcust" class="hidden">Customers</button><button data-t="stock" id="tstock" class="hidden">Stock</button><button data-t="lsetup" id="tlsetup" class="hidden">Load setup</button><button data-t="rem" id="trem" class="hidden">Reminders</button></nav>
@@ -176,11 +180,24 @@ $('save').onclick=()=>{
 
 function fillAreas(){
   $('area').innerHTML=me.areas.length?me.areas.map(a=>`<option>${esc(a)}</option>`).join(''):'<option value="">Add areas in Settings</option>';
-  $('arl').innerHTML=me.areas.map((a,i)=>`<div class="row"><span>${esc(a)}</span><a data-r="${i}">Remove</a></div>`).join('')||'<div class="muted">No areas yet.</div>';
+  $('arl').innerHTML=me.areas.map((a,i)=>`<div class="row"><span>${esc(a)}<br><span class="muted">${cs.filter(c=>c.area===a).length} customers</span></span><span><a data-au="${i}">&uarr;</a><a data-ad="${i}">&darr;</a><a data-ar="${i}">Rename</a><a data-r="${i}">Remove</a></span></div>`).join('')||'<div class="muted">No areas yet.</div>';
 }
 const saveAreas=()=>{userDoc().update({areas:me.areas}).catch(x=>alert(x.message));fillAreas()};
 $('aa').onclick=()=>{const v=$('na').value.trim();if(v&&!me.areas.includes(v)){me.areas.push(v);$('na').value='';saveAreas()}};
-$('arl').onclick=e=>{if(e.target.dataset.r!==undefined){me.areas.splice(+e.target.dataset.r,1);saveAreas()}};
+$('arl').onclick=e=>{
+  const d=e.target.dataset,A=me.areas;
+  if(d.au!==undefined){const i=+d.au;if(i>0){[A[i-1],A[i]]=[A[i],A[i-1]];saveAreas()}}
+  else if(d.ad!==undefined){const i=+d.ad;if(i<A.length-1){[A[i+1],A[i]]=[A[i],A[i+1]];saveAreas()}}
+  else if(d.ar!==undefined){
+    const i=+d.ar,old=A[i],nw=(prompt('New name for '+old,old)||'').trim();
+    if(nw&&nw!==old&&!A.includes(nw)){A[i]=nw;saveAreas();const b=db.batch();cs.filter(c=>c.area===old).forEach(c=>b.update(custs().doc(c.id),{area:nw}));b.commit().catch(()=>{})}
+  }
+  else if(d.r!==undefined){
+    const a=A[+d.r],n=cs.filter(c=>c.area===a).length;
+    if(confirm('Remove "'+a+'"?'+(n?' '+n+' customers use it and keep the name.':''))){A.splice(+d.r,1);saveAreas()}
+  }
+};
+$('na').onkeydown=e=>{if(e.key==='Enter')$('aa').click()};
 $('stg').onclick=()=>{me.target=parseFloat($('tg').value)||0;userDoc().update({target:me.target}).catch(x=>alert(x.message));render();tab('home')};
 
 $('cp').onclick=async()=>{
@@ -353,7 +370,7 @@ const DAYS=[[6,'Sat'],[0,'Sun'],[1,'Mon'],[2,'Tue'],[3,'Wed'],[4,'Thu']];
 const dn=d=>(DAYS.find(x=>x[0]===d)||[0,'?'])[1];
 const custs=()=>userDoc().collection('customers');
 const stamp=()=>{const d=new Date();return ymd(d)+'T'+pad(d.getHours())+':'+pad(d.getMinutes())};
-function watchCusts(){custs().orderBy('name').onSnapshot(s=>{cs=s.docs.map(d=>({id:d.id,...d.data()}));if(cmode==='list')drawCust();if(cmode==='view')drawView()},()=>{})}
+function watchCusts(){custs().orderBy('name').onSnapshot(s=>{cs=s.docs.map(d=>({id:d.id,...d.data()}));if(cmode==='list')drawCust();if(cmode==='view')drawView();fillAreas()},()=>{})}
 function parseLoc(t){
   t=String(t||'');const m=t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)||t.match(/[?&](?:q|ll|query)=(-?\d+\.\d+)(?:,|%2C)(-?\d+\.\d+)/)||t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)||t.match(/^\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*$/);
   return m?{lat:+m[1],lng:+m[2]}:null;
@@ -725,7 +742,9 @@ $('lsetup').onclick=ev=>{
   });
   b.commit().then(()=>$('cfm').textContent='Saved.').catch(e=>$('cfm').textContent=e.message);
 };
-const VER='v1.13';
+const VER='v1.14';
+try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
+
 const IC={
  home:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
  add:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
@@ -753,14 +772,14 @@ async function cleanOrders(){
     if(n)await b.commit();
   }catch(e){}
 }
-let st={opts:{dir:'down',hrs:12},v:'order',stage:'pick',cfg:{},doors:[],night:null,order:null,rows:null,html:''};
+let st={opts:{dir:'down',hrs:12},mstep:1,v:'order',stage:'pick',cfg:{},doors:[],night:null,order:null,rows:null,html:''};
 const stk=()=>userDoc().collection('stock');
 async function loadStock(){
   try{const q=await userDoc().collection('loadcfg').get();q.docs.forEach(d=>{if(d.id==='_doors')st.doors=d.data().names;else if(d.id==='_opts')st.opts=d.data();else st.cfg[d.id]=d.data()})}catch(e){}
   if(!st.doors||st.doors.length!==8)st.doors=[1,2,3,4,5,6,7,8].map(i=>'Door '+i);
   try{const d=await stk().doc('night').get();st.night=d.exists?d.data():null}catch(e){}
   await cleanOrders();
-  try{const q=await ordersCol(uid).orderBy('ts','desc').limit(1).get();st.order=q.empty?null:q.docs[0].data()}catch(e){}
+  try{const d=await stk().doc('lastorder').get();st.order=d.exists?d.data():null}catch(e){}
   drawStock();
 }
 async function ocr(file,say){
@@ -775,7 +794,7 @@ async function ocr(file,say){
 }
 const NOTE={order:'Upload the screenshot taken when about 90% of sales are done.',night:'Upload the screenshot after all sales are closed.',morning:'Upload the screenshot after loading is entered.'};
 function drawStock(){
-  $('stock').innerHTML=`<h2>Stock</h2><select id="sv">${[['order','1. Make order (evening)'],['night','2. Night stock (sales closed)'],['morning','3. Morning check'],['orders','Saved orders']].map(([v,t])=>`<option value="${v}" ${v===st.v?'selected':''}>${t}</option>`).join('')}</select><div id="sb"></div>`;
+  $('stock').innerHTML=`<h2>Stock</h2><select id="sv">${[['order','1. Make order (evening)'],['morning','2. Morning check (2 screenshots)'],['orders','Saved orders']].map(([v,t])=>`<option value="${v}" ${v===st.v?'selected':''}>${t}</option>`).join('')}</select><div id="sb"></div>`;
   drawSB();
 }
 function drawSB(){
@@ -784,7 +803,7 @@ function drawSB(){
   if(st.stage==='review')return drawReview();
   if(st.stage==='order')return drawOrder();
   if(st.stage==='done'){b.innerHTML=st.html+'<button id="sagain" class="alt">Start again</button>';return}
-  b.innerHTML=`<p class="muted">${NOTE[st.v]}</p><button id="sup">Choose screenshot</button><div class="muted" id="sst"></div>`;
+  b.innerHTML=`<p class="muted">${st.v==='morning'?(st.mstep===2?'Screenshot 2 of 2: the morning stock after loading is entered (including any new products).':'Screenshot 1 of 2: the night remaining stock, taken after sales closed.'):NOTE[st.v]}</p><button id="sup">Choose screenshot</button><div class="muted" id="sst"></div>`;
 }
 function drawReview(){
   $('sb').innerHTML=`<h3>Step 1: check the numbers</h3><p class="muted">${st.rows.length} products read. Fix any mistakes, then tap Use these numbers at the bottom. The order is worked out after that.</p>`+
@@ -802,8 +821,8 @@ function drawOrder(){
 function compare(m){
   const nm={},od={};((st.night&&st.night.rows)||[]).forEach(r=>nm[r.key]=r);((st.order&&st.order.rows)||[]).forEach(r=>od[r.key]=r.qty);
   let ok=0,bad=0;
-  const h=m.map(r=>{const n=nm[r.key],ld=n?r.orig-n.rem:null,o=od[r.key]||0,df=ld==null?null:ld-o,good=df!=null&&Math.abs(df)<0.0005;good?ok++:bad++;
-    return `<div class="row"><span>${esc(r.name)}<br><span class="muted">Ordered ${o}, loaded ${ld==null?'?':ld}</span></span><b style="color:${good?'#1E8E4E':'#C0392B'}">${ld==null?'No night data':good?'OK':df>0?'Excess +'+df:'Short '+df}</b></div>`}).join('');
+  const h=m.map(r=>{const n=nm[r.key],ld=r.orig-(n?n.rem:0),o=od[r.key]||0,df=ld-o,good=Math.abs(df)<0.0005;good?ok++:bad++;
+    return `<div class="row"><span>${esc(r.name)}<br><span class="muted">Ordered ${o}, loaded ${ld}${n?'':' (new product)'}</span></span><b style="color:${good?'#1E8E4E':'#C0392B'}">${good?'OK':df>0?'Excess +'+df:'Short '+df}</b></div>`}).join('');
   return `<h3>${ok} OK, ${bad} to check</h3>`+h;
 }
 function pickShot(){
@@ -819,7 +838,7 @@ $('stock').onclick=ev=>{
   ordActions(t,uid,drawOrders);
   if(t.id==='orb')rebuild();
   else if(t.id==='sup')pickShot();
-  else if(t.id==='sagain'){st.stage='pick';st.rows=null;drawSB()}
+  else if(t.id==='sagain'){st.stage='pick';st.rows=null;st.mstep=1;drawSB()}
   else if(t.id==='sok'){
     document.querySelectorAll('#sb [data-i]').forEach(x=>st.rows[x.dataset.i][x.dataset.f]=parseFloat(x.value)||0);
     const mm={};document.querySelectorAll('#sb [data-m]').forEach(x=>{(mm[x.dataset.m]=mm[x.dataset.m]||{})[x.dataset.f]=x.value});
@@ -829,15 +848,16 @@ $('stock').onclick=ev=>{
     const d={date:ymd(new Date()),rows:st.rows};
     if(st.v==='order'){stk().doc('evening').set(d).catch(()=>{});st.stage='order';drawSB()}
     else if(st.v==='night'){stk().doc('night').set(d).catch(e=>alert(e.message));st.night=d;st.html='<p>Night stock saved ('+d.rows.length+' products). Use Load setup to set max loads.</p>';st.stage='done';drawSB()}
-    else{stk().doc('morning').set(d).catch(()=>{});st.html=compare(d.rows);st.stage='done';drawSB()}
+    else if(st.mstep===1){stk().doc('night').set(d).catch(()=>{});st.night=d;st.mstep=2;st.stage='pick';st.rows=null;drawSB()}
+    else{stk().doc('morning').set(d).catch(()=>{});st.html=compare(d.rows);st.stage='done';st.mstep=1;drawSB()}
   }
   else if(t.id==='osave'||t.id==='oshare'){
     const rows=[...document.querySelectorAll('#sb [data-o]')].map(x=>({key:x.dataset.o,name:x.dataset.n,door:x.dataset.d,qty:parseFloat(x.value)||0}));
-    if(t.id==='osave'){st.order={date:ymd(new Date()),rows};st.order.ts=stamp();ordersCol(uid).add(st.order).catch(e=>alert(e.message));st.html='<p>Order saved. Use Morning check after loading.</p>';st.stage='done';drawSB()}
+    if(t.id==='osave'){st.order={date:ymd(new Date()),rows};st.order.ts=stamp();ordersCol(uid).add(st.order).catch(e=>alert(e.message));stk().doc('lastorder').set(st.order).catch(()=>{});st.html='<p>Order saved. Use Morning check after loading.</p>';st.stage='done';drawSB()}
     else window.open('https://wa.me/?text='+encodeURIComponent(orderText(rows,ymd(new Date()))),'_blank')
   }
 };
-$('stock').onchange=ev=>{if(ev.target.id==='sv'){st.v=ev.target.value;st.stage='pick';st.rows=null;drawSB()}};
+$('stock').onchange=ev=>{if(ev.target.id==='sv'){st.v=ev.target.value;st.stage='pick';st.rows=null;st.mstep=1;drawSB()}};
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>

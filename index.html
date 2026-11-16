@@ -294,13 +294,13 @@ const money=n=>Number(n).toLocaleString('en',{maximumFractionDigits:2});
 let reqs=[];
 function watchProducts(){
   if(me.role==='admin')db.collection('productRequests').onSnapshot(s=>{reqs=s.docs.map(d=>({id:d.id,...d.data()}));if(pedit===null)drawProds()},()=>{});
-  db.collection('products').orderBy('name').onSnapshot(s=>{prods=s.docs.map(d=>({id:d.id,...d.data()}));if(pedit===null)drawProds()},()=>{});
+  db.collection('products').orderBy('name').onSnapshot(s=>{prods=s.docs.map(d=>({id:d.id,...d.data()}));const nn=prods.filter(p=>p.isNew).length;if(me.role==='admin')$('tprod').querySelector('span').textContent='Products'+(nn?' ('+nn+')':'');if(pedit===null)drawProds()},()=>{});
 }
 function drawList(){
   const price=can('prod.price'),admin=me.role==='admin',q=pq.toLowerCase();
   const list=prods.filter(p=>(!pcat||p.category===pcat)&&(!q||((p.name||'')+' '+(p.code||'')).toLowerCase().includes(q)));
-  $('plist').innerHTML=`<div class="muted">${list.length} products</div>`+list.map(p=>`<div class="row"><span>${esc(p.name)}<br><span class="muted">${esc(p.code)}${p.pack?', '+esc(p.pack):''}${p.category?', '+esc(p.category):''}</span></span>
-   <span>${price&&p.price!=null?'<b>'+money(p.price)+'</b>':''}${admin?'<a data-pe="'+esc(p.id)+'">Edit</a>':''}</span></div>`).join('');
+  $('plist').innerHTML=`<div class="muted">${list.length} products</div>`+list.map(p=>`<div class="row"><span>${esc(p.name)}${p.isNew?' <b style="color:#E67E22;font-size:.75rem">NEW</b>':''}<br><span class="muted">${[admin?p.code:'',p.pack,p.category].filter(Boolean).map(esc).join(', ')}</span></span>
+   <span>${price&&p.price!=null?'<b>'+money(p.price)+'</b>':''}${admin?'<a data-pe="'+esc(p.id)+'">Edit</a><a data-pd="'+esc(p.id)+'">Delete</a>':''}</span></div>`).join('');
 }
 function drawProds(){
   const admin=me.role==='admin',cats=[...new Set(prods.map(p=>p.category).filter(Boolean))].sort();
@@ -349,12 +349,13 @@ $('prod').onclick=ev=>{
   else if(t.id==='padd'){pedit='';drawProds()}
   else if(t.dataset.pe){pedit=t.dataset.pe;drawProds()}
   else if(t.id==='pcancel'){pedit=null;drawProds()}
+  else if(t.dataset.pd){if(confirm('Delete this product?'))db.collection('products').doc(t.dataset.pd).delete().catch(e=>alert(e.message))}
   else if(t.id==='pimp')$('pfile').click();
   else if(t.id==='ptpl')template();
   else if(t.id==='psave'){
     const code=$('pcode').value.trim(),name=$('pname').value.trim(),pr=parseFloat($('pprice').value);
     if(!code||!name){$('pmsg2').textContent='Enter the code and name.';return}
-    db.collection('products').doc(idOf(code)).set({code,name,pack:$('ppack').value.trim(),unit:$('punit').value.trim()||'Carton',category:$('pcat').value.trim(),price:isNaN(pr)?null:pr},{merge:true}).catch(e=>alert(e.message));
+    db.collection('products').doc(idOf(code)).set({code,name,pack:$('ppack').value.trim(),unit:$('punit').value.trim()||'Carton',category:$('pcat').value.trim(),price:isNaN(pr)?null:pr,isNew:false},{merge:true}).catch(e=>alert(e.message));
     pedit=null;drawProds();
   }
   else if(t.id==='pdel'&&confirm('Delete this product?')){db.collection('products').doc(pedit).delete().catch(e=>alert(e.message));pedit=null;drawProds()}
@@ -492,6 +493,126 @@ $('cust').onchange=ev=>{
   if(i==='clk'){const l=parseLoc(ev.target.value);if(l){ed.lat=l.lat;ed.lng=l.lng;$('cloc').textContent='Location read from link'}else $('cloc').textContent=ev.target.value?'Link saved. Coordinates could not be read, so use GPS once at the shop for nearest-first.':''}
 };
 
+const prodMap=()=>{const m={};prods.forEach(p=>{const k=keyOf(p.code);if(k)m[k]=p});return m};
+function resolveKey(k,pm){
+  if(st.fix[k]&&pm[st.fix[k]])return{key:st.fix[k],how:'fix'};
+  if(pm[k])return{key:k,how:'ok'};
+  const c=Object.keys(pm).filter(x=>x.length===k.length&&x.slice(0,2)===k.slice(0,2)&&[...k].filter((ch,i)=>ch!==x[i]).length===1);
+  return c.length===1?{key:c[0],how:'snap'}:null;
+}
+const qty=t=>{const d=String(t).replace(/[^\d.]/g,'');return d.includes('.')?+d.split('.')[0]:(+d.slice(0,-3)||0)};
+function numVal(t){
+  const d=String(t).replace(/[^0-9.]/g,'');
+  if(/^\d+\.\d+$/.test(d))return parseFloat(d);
+  if(/^\d{4,}$/.test(d)&&d.endsWith('000'))return parseFloat(d.slice(0,-3));
+  return null;
+}
+function pairRows(R,O,C,lh){
+  const codes=C.map(c=>({d:(c.t.match(/\d{4}/)||[])[0],y:c.y})).filter(c=>c.d);
+  return R.map((r,i)=>{
+    const ny=i+1<R.length?R[i+1].y:1e9,cd=codes.find(c=>c.y>r.y+.3*lh&&c.y<=ny-.1*lh),ov=O.find(o=>Math.abs(o.y-r.y)<.3*lh);
+    const pre=C.some(c=>Math.abs(c.y-r.y)<.45*lh&&/SA/.test(c.t)&&!/ICE/.test(c.t))?'SA':'ICE';
+    return{key:cd?pre+cd.d:null,orig:ov&&ov.v!=null?ov.v:r.v,rem:r.v};
+  });
+}
+async function readShot(file,say){
+  const img=await createImageBitmap(file),W=img.width,H=img.height,full=document.createElement('canvas');
+  full.width=W;full.height=H;const fx=full.getContext('2d',{willReadFrequently:true});fx.drawImage(img,0,0);
+  const top=Math.min(H,1400),d=fx.getImageData(0,0,W,top).data,ys=[];
+  const green=i=>d[i+1]>150&&d[i]>100&&d[i]<230&&d[i+2]<120&&d[i+1]>d[i+2]+60;
+  for(let y=0;y<top;y++){let n=0;for(let x=0;x<W;x++)if(green((y*W+x)*4))n++;if(n>W*.3)ys.push(y)}
+  let y0=0,xl=0,xr=W-1;
+  if(ys.length){
+    let ye=ys[0];for(const y of ys.slice(1)){if(y-ye<=3)ye=y;else break}
+    xl=W;xr=0;for(let y=ys[0];y<=ye;y++)for(let x=0;x<W;x++)if(green((y*W+x)*4)){if(x<xl)xl=x;if(x>xr)xr=x}
+    y0=ye+3;
+  }
+  const wt=xr-xl,k=Math.max(2,Math.round(2900/wt)),lh=wt*.045,bandH=Math.floor(8000/k),ov=Math.ceil(lh*5);
+  const cols=[['rem',.86,1,'0123456789.',false],['orig',.70,.85,'0123456789.',false],['code',0,.16,'FGICESAM0123456789-',true]];
+  const got={rem:[],orig:[],code:[]};
+  const cut=(sx,sy,sw,sh,kk,bw)=>{
+    const c=document.createElement('canvas'),cx=c.getContext('2d',{willReadFrequently:true});
+    c.width=Math.round(sw*kk);c.height=Math.round(sh*kk);cx.imageSmoothingQuality='high';cx.drawImage(full,sx,sy,sw,sh,0,0,c.width,c.height);
+    if(bw){const id=cx.getImageData(0,0,c.width,c.height),a=id.data;for(let i=0;i<a.length;i+=4){const v=(a[i]+a[i+1]+a[i+2])/3<115?0:255;a[i]=a[i+1]=a[i+2]=v}cx.putImageData(id,0,0)}
+    return c;
+  };
+  say('Loading the reader (needs internet the first time)...');
+  const w=await Tesseract.createWorker('eng');
+  const words=res=>res.data.words||(res.data.blocks||[]).flatMap(q=>q.paragraphs.flatMap(p=>p.lines.flatMap(l=>l.words)));
+  for(let b=y0,n=1;b<H;b+=bandH-ov,n++){
+    const bh=Math.min(bandH,H-b);
+    for(const [nm,f0,f1,wl,bw] of cols){
+      say('Reading part '+n+' ('+nm+')...');
+      await w.setParameters({tessedit_char_whitelist:wl,tessedit_pageseg_mode:'6'});
+      const res=await w.recognize(cut(xl+f0*wt,b,(f1-f0)*wt,bh,k,bw));
+      words(res).forEach(t=>{if(t.text.trim())got[nm].push({t:t.text.trim(),y:b+(t.bbox.y0+t.bbox.y1)/2/k})});
+    }
+    if(b+bh>=H)break;
+  }
+  const clean=l=>{l.sort((a,b)=>a.y-b.y);return l.filter((q,i)=>!(i&&l[i-1].t===q.t&&Math.abs(l[i-1].y-q.y)<.4*lh))};
+  const R=clean(got.rem).map(q=>({v:numVal(q.t),y:q.y})),O=clean(got.orig).map(q=>({v:numVal(q.t),y:q.y})),C=clean(got.code);
+  const pr=pairRows(R,O,C,lh),pm=prodMap(),out=[];let wm=null;
+  for(let i=0;i<pr.length;i++){
+    if(pr[i].rem==null)continue;
+    let nameGuess='';
+    if(!(pr[i].key&&resolveKey(pr[i].key,pm))){
+      say('Reading a new product name...');
+      if(!wm){wm=await Tesseract.createWorker('eng');await wm.setParameters({tessedit_pageseg_mode:'6'})}
+      const ya=Math.max(0,R[i].y-.6*lh),yb=Math.min(H,i+1<R.length?R[i+1].y-.5*lh:R[i].y+4*lh);
+      nameGuess=(await wm.recognize(cut(xl+.16*wt,ya,.44*wt,yb-ya,3,false))).data.text.replace(/\s+/g,' ').trim();
+    }
+    out.push({key:pr[i].key,orig:pr[i].orig,rem:pr[i].rem,nameGuess});
+  }
+  await w.terminate();if(wm)await wm.terminate();
+  return out;
+}
+async function readAndMatch(f,say){
+  const raw=await readShot(f,say),pm=prodMap(),rows=[],unk=[],seen={};
+  for(const r of raw){
+    const res=r.key?resolveKey(r.key,pm):null;
+    if(res){if(seen[res.key])continue;seen[res.key]=1;rows.push({key:res.key,name:pm[res.key].name,orig:r.orig,rem:r.rem,same:r.orig===r.rem,how:res.how})}
+    else unk.push({rawKey:r.key,orig:r.orig,rem:r.rem,nameGuess:r.nameGuess});
+  }
+  st.rows=rows;st.unk=unk;
+}
+function missingHtml(){
+  const have=new Set(st.rows.map(r=>r.key));st.missing=knownList().filter(k=>!have.has(k.key));
+  return st.missing.length?`<details><summary class="muted">Products not found in the screenshot (${st.missing.length})</summary><p class="muted">If any of these are in the screenshot, type their quantity.</p>`+st.missing.map((k,i)=>`<div class="row"><span>${esc(k.name)}</span><input data-m="${i}" type="number" step="any" placeholder="Qty" style="width:84px;margin:0;padding:6px"></div>`).join('')+'</details>':'';
+}
+function drawReview(){
+  const two=st.v==='morning'&&st.mstep===2,pl=Object.values(prodMap()).sort((a,b)=>a.name.localeCompare(b.name));
+  const opt='<option value="new">New product</option><option value="skip">Skip this row</option>'+pl.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+  const inp=(i,f,v,w)=>`<input data-i="${i}" data-f="${f}" type="number" step="any" value="${v}" style="width:${w}px;margin:0;padding:6px">`;
+  $('sb').innerHTML=`<h3>Check the numbers</h3><p class="muted">${st.rows.length} products read. Fix any mistakes, then tap Use these numbers.</p>`+
+   st.rows.map((r,i)=>`<div class="row"><span>${esc(r.name)}${r.how==='snap'?'<br><span class="muted">Code corrected</span>':''}</span><span style="display:flex;gap:6px">${two&&!r.same?inp(i,'orig',r.orig,64)+inp(i,'rem',r.rem,64):inp(i,'rem',r.rem,84)}</span></div>`).join('')+
+   (st.unk.length?`<h3>Not matched (${st.unk.length})</h3><p class="muted">Choose the product, or add it as a new one with its name.</p>`+st.unk.map((u,j)=>`<div class="row" style="flex-wrap:wrap"><select data-us="${j}" style="margin:0 0 6px">${opt}</select><input data-un="${j}" placeholder="Name of the new product" value="${esc(u.nameGuess||'')}" style="margin:0 8px 6px 0;flex:1"><input data-ur="${j}" type="number" step="any" value="${u.rem}" style="width:84px;margin:0 0 6px;padding:6px"></div>`).join(''):'')+
+   missingHtml()+'<p></p><button id="sok">Use these numbers</button><button id="sagain" class="alt">Cancel</button>';
+}
+function collectRows(){
+  document.querySelectorAll('#sb [data-i]').forEach(x=>{
+    const r=st.rows[x.dataset.i],v=parseFloat(x.value)||0;
+    if(x.dataset.f==='orig')r.orig=v;else{r.rem=v;if(!x.parentNode.querySelector('[data-f=orig]'))r.orig=v}
+  });
+  const adds=[];
+  for(let j=0;j<st.unk.length;j++){
+    const u=st.unk[j],q=n=>document.querySelector('#sb [data-'+n+'="'+j+'"]'),sel=q('us').value,nm=q('un').value.trim(),rem=parseFloat(q('ur').value)||0;
+    if(sel==='skip')continue;
+    if(sel==='new'){
+      if(!u.rawKey){alert('A row has no readable code. Choose its product from the list, or skip it.');return false}
+      if(!nm){alert('Type the name of each new product.');return false}
+      adds.push({code:u.rawKey.startsWith('SA')?'FG-SAM-'+u.rawKey.slice(2):'FG-ICE-'+u.rawKey.slice(3),name:nm});
+      st.rows.push({key:u.rawKey,name:nm,orig:rem,rem,same:true});
+    }else{
+      const p=prods.find(x=>x.id===sel);if(!p)continue;const k=keyOf(p.code);
+      st.rows.push({key:k,name:p.name,orig:rem,rem,same:true});
+      if(u.rawKey&&u.rawKey!==k){st.fix[u.rawKey]=k;db.collection('ocrfix').doc(u.rawKey).set({to:k}).catch(()=>{})}
+    }
+  }
+  adds.forEach(a=>db.collection('products').doc(idOf(a.code)).set({code:a.code,name:a.name,pack:'',unit:'Carton',category:'',price:null,isNew:true}).catch(e=>alert('New product not saved: '+e.message)));
+  const mm={};document.querySelectorAll('#sb [data-m]').forEach(x=>mm[x.dataset.m]=x.value);
+  Object.keys(mm).forEach(i=>{if(mm[i]!==''){const k=st.missing[i],v=parseFloat(mm[i])||0;st.rows.push({key:k.key,name:k.name,orig:v,rem:v,same:true})}});
+  return true;
+}
 let fzPhoto='';
 let rt={list:[],skip:[]},rems=[];
 const hav=(p,c)=>{const r=x=>x*Math.PI/180,dl=r(c.lat-p.lat),dg=r(c.lng-p.lng),a=Math.sin(dl/2)**2+Math.cos(r(p.lat))*Math.cos(r(c.lat))*Math.sin(dg/2)**2;return 6371*2*Math.asin(Math.sqrt(a))};
@@ -676,10 +797,6 @@ function knownList(){
   const m={};((st.night&&st.night.rows)||[]).forEach(r=>m[r.key]={key:r.key,name:r.name});
   prods.forEach(p=>{const k=keyOf(p.code);if(k)m[k]={key:k,name:p.name}});return Object.values(m);
 }
-function missingHtml(){
-  const have=new Set(st.rows.map(r=>r.key));st.missing=knownList().filter(k=>!have.has(k.key));
-  return st.missing.length?`<h3>Not read (${st.missing.length})</h3><p class="muted">If any of these are in the screenshot, type their numbers.</p>`+st.missing.map((k,i)=>`<div class="row"><span>${esc(k.name)}</span><span style="display:flex;gap:6px"><input data-m="${i}" data-f="orig" type="number" step="any" placeholder="Orig" style="width:76px;margin:0;padding:6px"><input data-m="${i}" data-f="rem" type="number" step="any" placeholder="Rem" style="width:76px;margin:0;padding:6px"></span></div>`).join(''):'';
-}
 function offerNew(rows){
   const have=new Set(prods.map(p=>keyOf(p.code))),nw=rows.filter(r=>r.code&&!have.has(r.key));if(!nw.length)return;
   const mk=r=>{const pm=r.name.match(/\s(\d+[*x]\S.*)$/);return{code:r.code,name:r.name,pack:pm?pm[1]:'',unit:'Carton',category:'',price:null}};
@@ -742,7 +859,7 @@ $('lsetup').onclick=ev=>{
   });
   b.commit().then(()=>$('cfm').textContent='Saved.').catch(e=>$('cfm').textContent=e.message);
 };
-const VER='v1.14';
+const VER='v1.16';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={
@@ -772,13 +889,14 @@ async function cleanOrders(){
     if(n)await b.commit();
   }catch(e){}
 }
-let st={opts:{dir:'down',hrs:12},mstep:1,v:'order',stage:'pick',cfg:{},doors:[],night:null,order:null,rows:null,html:''};
+let st={opts:{dir:'down',hrs:12},unk:[],fix:{},mstep:1,v:'order',stage:'pick',cfg:{},doors:[],night:null,order:null,rows:null,html:''};
 const stk=()=>userDoc().collection('stock');
 async function loadStock(){
   try{const q=await userDoc().collection('loadcfg').get();q.docs.forEach(d=>{if(d.id==='_doors')st.doors=d.data().names;else if(d.id==='_opts')st.opts=d.data();else st.cfg[d.id]=d.data()})}catch(e){}
   if(!st.doors||st.doors.length!==8)st.doors=[1,2,3,4,5,6,7,8].map(i=>'Door '+i);
   try{const d=await stk().doc('night').get();st.night=d.exists?d.data():null}catch(e){}
   await cleanOrders();
+  try{const q=await db.collection('ocrfix').get();q.docs.forEach(d=>st.fix[d.id]=d.data().to)}catch(e){}
   try{const d=await stk().doc('lastorder').get();st.order=d.exists?d.data():null}catch(e){}
   drawStock();
 }
@@ -805,11 +923,6 @@ function drawSB(){
   if(st.stage==='done'){b.innerHTML=st.html+'<button id="sagain" class="alt">Start again</button>';return}
   b.innerHTML=`<p class="muted">${st.v==='morning'?(st.mstep===2?'Screenshot 2 of 2: the morning stock after loading is entered (including any new products).':'Screenshot 1 of 2: the night remaining stock, taken after sales closed.'):NOTE[st.v]}</p><button id="sup">Choose screenshot</button><div class="muted" id="sst"></div>`;
 }
-function drawReview(){
-  $('sb').innerHTML=`<h3>Step 1: check the numbers</h3><p class="muted">${st.rows.length} products read. Fix any mistakes, then tap Use these numbers at the bottom. The order is worked out after that.</p>`+
-   `<div class="row"><b>Product</b><b>Orig / Rem</b></div>`+st.rows.map((r,i)=>`<div class="row"><span>${esc(r.name)}</span><span style="display:flex;gap:6px"><input data-i="${i}" data-f="orig" type="number" step="any" value="${r.orig}" style="width:76px;margin:0;padding:6px"><input data-i="${i}" data-f="rem" type="number" step="any" value="${r.rem}" style="width:76px;margin:0;padding:6px"></span></div>`).join('')+
-   `${missingHtml()}<p></p><button id="sok">Use these numbers</button><button id="sagain" class="alt">Cancel</button>`;
-}
 function drawOrder(){
   const rows=st.rows.filter(r=>st.cfg[r.key]&&st.cfg[r.key].max>0),no=st.rows.length-rows.length;
   rows.sort((a,b)=>(st.cfg[a.key].door??9)-(st.cfg[b.key].door??9));let last='',h='';
@@ -828,8 +941,8 @@ function compare(m){
 function pickShot(){
   const i=document.createElement('input');i.type='file';i.accept='image/*';
   i.onchange=async()=>{const f=i.files[0];if(!f)return;
-    try{st.rows=await ocr(f,t=>{$('sst').textContent=t});
-      if(!st.rows.length){$('sst').textContent='Could not read any products. Try a clearer, full-width screenshot.';return}
+    try{await readAndMatch(f,t=>{$('sst').textContent=t});
+      if(!st.rows.length&&!st.unk.length){$('sst').textContent='Could not read any products. Try a clearer, full-width screenshot.';return}
       st.stage='review';drawSB()}catch(e){$('sst').textContent='Reading failed: '+e.message}};
   i.click();
 }
@@ -840,11 +953,7 @@ $('stock').onclick=ev=>{
   else if(t.id==='sup')pickShot();
   else if(t.id==='sagain'){st.stage='pick';st.rows=null;st.mstep=1;drawSB()}
   else if(t.id==='sok'){
-    document.querySelectorAll('#sb [data-i]').forEach(x=>st.rows[x.dataset.i][x.dataset.f]=parseFloat(x.value)||0);
-    const mm={};document.querySelectorAll('#sb [data-m]').forEach(x=>{(mm[x.dataset.m]=mm[x.dataset.m]||{})[x.dataset.f]=x.value});
-    Object.keys(mm).forEach(i=>{if(mm[i].orig!==''||mm[i].rem!==''){const k=st.missing[i];st.rows.push({key:k.key,name:k.name,orig:parseFloat(mm[i].orig)||0,rem:parseFloat(mm[i].rem)||0})}});
-    st.rows.forEach(r=>{const p=prods.find(x=>keyOf(x.code)===r.key);if(p&&p.name)r.name=p.name});
-    offerNew(st.rows);
+    if(!collectRows())return;
     const d={date:ymd(new Date()),rows:st.rows};
     if(st.v==='order'){stk().doc('evening').set(d).catch(()=>{});st.stage='order';drawSB()}
     else if(st.v==='night'){stk().doc('night').set(d).catch(e=>alert(e.message));st.night=d;st.html='<p>Night stock saved ('+d.rows.length+' products). Use Load setup to set max loads.</p>';st.stage='done';drawSB()}

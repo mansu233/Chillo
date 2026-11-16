@@ -526,6 +526,10 @@ async function readShot(file,say){
     let ye=ys[0];for(const y of ys.slice(1)){if(y-ye<=3)ye=y;else break}
     xl=W;xr=0;for(let y=ys[0];y<=ye;y++)for(let x=0;x<W;x++)if(green((y*W+x)*4)){if(x<xl)xl=x;if(x>xr)xr=x}
     y0=ye+3;
+  }else{
+    const lum=i=>.3*d[i]+.59*d[i+1]+.11*d[i+2],cm=new Array(W).fill(0),sp=Math.max(1,Math.floor(top/60));let n=0;
+    for(let y=0;y<top;y+=sp){n++;for(let x=0;x<W;x++)cm[x]+=lum((y*W+x)*4)}
+    let l=0,r=W-1;while(l<W/4&&cm[l]/n<90)l++;while(r>W*.75&&cm[r]/n<90)r--;xl=l;xr=r;
   }
   const wt=xr-xl,k=Math.max(2,Math.round(2900/wt)),lh=wt*.045,bandH=Math.floor(8000/k),ov=Math.ceil(lh*5);
   const cols=[['rem',.86,1,'0123456789.',false],['orig',.70,.85,'0123456789.',false],['code',0,.16,'FGICESAM0123456789-',true]];
@@ -859,7 +863,7 @@ $('lsetup').onclick=ev=>{
   });
   b.commit().then(()=>$('cfm').textContent='Saved.').catch(e=>$('cfm').textContent=e.message);
 };
-const VER='v1.16';
+const VER='v1.17';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={

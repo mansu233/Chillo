@@ -838,7 +838,7 @@ async function showMemberOrders(){
   $('mem').innerHTML='<a id="back" style="margin:0">Back to members</a><h2>Orders</h2>'+ordersHtml(l);
 }
 function ordActions(t,ouid,after){
-  if(t.dataset.sh){const o=(st.ol||[]).find(x=>x.id===t.dataset.sh);if(o)window.open('https://wa.me/?text='+encodeURIComponent(orderText(o.rows,o.date)),'_blank')}
+  if(t.dataset.sh){const o=(st.ol||[]).find(x=>x.id===t.dataset.sh);if(o)shareText(orderText(o.rows,o.date))}
   if(t.id==='odel'){
     const ids=[...document.querySelectorAll('[data-sel]:checked')].map(x=>x.dataset.sel);
     if(!ids.length){alert('Tick the orders you want to delete.');return}
@@ -863,7 +863,7 @@ $('lsetup').onclick=ev=>{
   });
   b.commit().then(()=>$('cfm').textContent='Saved.').catch(e=>$('cfm').textContent=e.message);
 };
-const VER='v1.17';
+const VER='v1.18';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={
@@ -893,7 +893,40 @@ async function cleanOrders(){
     if(n)await b.commit();
   }catch(e){}
 }
-let st={opts:{dir:'down',hrs:12},unk:[],fix:{},mstep:1,v:'order',stage:'pick',cfg:{},doors:[],night:null,order:null,rows:null,html:''};
+const chkCol=()=>userDoc().collection('chkorders');
+async function pruneChk(){
+  try{const q=await chkCol().orderBy('ts','desc').get();if(q.size>5){const b=db.batch();q.docs.slice(5).forEach(d=>b.delete(d.ref));await b.commit()}}catch(e){}
+}
+function shareText(t){if(navigator.share)navigator.share({text:t}).catch(()=>{});else window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank')}
+const r3=n=>Math.round(n*1000)/1000;
+function orderLabel(o){
+  const t=new Date(o.ts),tot=o.rows.reduce((a,r)=>a+r.qty,0);
+  return t.toLocaleString('en',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+', '+o.rows.filter(r=>r.qty>0).length+' products, '+tot+' cartons';
+}
+function cmpRows(){
+  const o=st.chk.find(x=>x.id===st.oid)||st.order,od={},nm={},cur={},name={};
+  ((o&&o.rows)||[]).forEach(r=>{od[r.key]=r.qty;name[r.key]=r.name});
+  ((st.night&&st.night.rows)||[]).forEach(r=>{nm[r.key]=r.rem;name[r.key]=name[r.key]||r.name});
+  (st.mrows||[]).forEach(r=>{cur[r.key]=r.orig;name[r.key]=r.name||name[r.key]});
+  const keys=new Set([...Object.keys(cur),...Object.keys(od).filter(k=>od[k]>0)]);
+  return [...keys].map(k=>{const old=nm[k]||0,ord=od[k]||0,exp=r3(old+ord),c=cur[k]==null?0:cur[k];
+    return{k,name:name[k]||k,old,ord,exp,cur:c,df:r3(c-exp),isNew:nm[k]==null,miss:cur[k]==null}});
+}
+function drawCompare(){
+  const l=cmpRows(),o=st.chk.find(x=>x.id===st.oid)||st.order;
+  const bad=l.filter(x=>x.df!==0),ex=bad.filter(x=>x.df>0).length,sh=bad.length-ex,ok=l.length-bad.length;
+  l.sort((a,b)=>(b.df!==0)-(a.df!==0)||Math.abs(b.df)-Math.abs(a.df)||a.name.localeCompare(b.name));
+  const age=o?(Date.now()-new Date(o.ts).getTime())/3600000:0;
+  $('sb').innerHTML=(o?`<label>Order used</label><select id="ochk">${st.chk.map(x=>`<option value="${x.id}" ${x.id===o.id?'selected':''}>${esc(orderLabel(x))}</option>`).join('')}</select>${age>24?'<p class="err">This order is more than 24 hours old.</p>':''}`:'<p class="err">No saved order found, so the ordered quantity counts as 0.</p>')+
+   `<h3>${ok} OK, ${ex} excess, ${sh} short</h3><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="oonly" ${st.only?'checked':''}> Only differences</label>`+
+   l.filter(x=>!st.only||x.df!==0).map(x=>`<div class="row"><span>${esc(x.name)}${x.isNew?' <span class="muted">(new)</span>':''}<br><span class="muted">Old ${x.old} + Order ${x.ord} = ${x.exp}, current ${x.cur}${x.miss?' (not in screenshot)':''}</span></span><b style="color:${x.df===0?'#1E8E4E':'#C0392B'}">${x.df===0?'OK':x.df>0?'Excess +'+x.df:'Short '+x.df}</b></div>`).join('')+
+   `<p></p>${bad.length?'<button id="cshare" class="alt">Share differences</button>':''}<button id="sagain" class="alt">Start again</button>`;
+}
+function shareCompare(){
+  const l=cmpRows().filter(x=>x.df!==0).sort((a,b)=>a.df-b.df),o=st.chk.find(x=>x.id===st.oid)||st.order;
+  shareText('Morning check '+ymd(new Date())+(o?'\nOrder: '+orderLabel(o):'')+'\n'+l.map(x=>x.name+': expected '+x.exp+', current '+x.cur+' ('+(x.df>0?'+':'')+x.df+')').join('\n'));
+}
+let st={chk:[],opts:{dir:'down',hrs:12},unk:[],fix:{},mstep:1,v:'order',stage:'pick',cfg:{},doors:[],night:null,order:null,rows:null,html:''};
 const stk=()=>userDoc().collection('stock');
 async function loadStock(){
   try{const q=await userDoc().collection('loadcfg').get();q.docs.forEach(d=>{if(d.id==='_doors')st.doors=d.data().names;else if(d.id==='_opts')st.opts=d.data();else st.cfg[d.id]=d.data()})}catch(e){}
@@ -901,7 +934,9 @@ async function loadStock(){
   try{const d=await stk().doc('night').get();st.night=d.exists?d.data():null}catch(e){}
   await cleanOrders();
   try{const q=await db.collection('ocrfix').get();q.docs.forEach(d=>st.fix[d.id]=d.data().to)}catch(e){}
+  try{const q=await chkCol().orderBy('ts','desc').limit(5).get();st.chk=q.docs.map(d=>({id:d.id,...d.data()}))}catch(e){}
   try{const d=await stk().doc('lastorder').get();st.order=d.exists?d.data():null}catch(e){}
+  if(!st.chk.length&&st.order)st.chk=[{...st.order,id:'last'}];
   drawStock();
 }
 async function ocr(file,say){
@@ -924,6 +959,7 @@ function drawSB(){
   if(st.v==='orders')return drawOrders();
   if(st.stage==='review')return drawReview();
   if(st.stage==='order')return drawOrder();
+  if(st.stage==='cmp')return drawCompare();
   if(st.stage==='done'){b.innerHTML=st.html+'<button id="sagain" class="alt">Start again</button>';return}
   b.innerHTML=`<p class="muted">${st.v==='morning'?(st.mstep===2?'Screenshot 2 of 2: the morning stock after loading is entered (including any new products).':'Screenshot 1 of 2: the night remaining stock, taken after sales closed.'):NOTE[st.v]}</p><button id="sup">Choose screenshot</button><div class="muted" id="sst"></div>`;
 }
@@ -956,21 +992,25 @@ $('stock').onclick=ev=>{
   if(t.id==='orb')rebuild();
   else if(t.id==='sup')pickShot();
   else if(t.id==='sagain'){st.stage='pick';st.rows=null;st.mstep=1;drawSB()}
+  else if(t.id==='cshare')shareCompare();
   else if(t.id==='sok'){
     if(!collectRows())return;
     const d={date:ymd(new Date()),rows:st.rows};
     if(st.v==='order'){stk().doc('evening').set(d).catch(()=>{});st.stage='order';drawSB()}
     else if(st.v==='night'){stk().doc('night').set(d).catch(e=>alert(e.message));st.night=d;st.html='<p>Night stock saved ('+d.rows.length+' products). Use Load setup to set max loads.</p>';st.stage='done';drawSB()}
     else if(st.mstep===1){stk().doc('night').set(d).catch(()=>{});st.night=d;st.mstep=2;st.stage='pick';st.rows=null;drawSB()}
-    else{stk().doc('morning').set(d).catch(()=>{});st.html=compare(d.rows);st.stage='done';st.mstep=1;drawSB()}
+    else{stk().doc('morning').set(d).catch(()=>{});st.mrows=d.rows;st.oid=(st.chk[0]&&st.chk[0].id)||'';st.only=false;st.stage='cmp';st.mstep=1;drawSB()}
   }
   else if(t.id==='osave'||t.id==='oshare'){
     const rows=[...document.querySelectorAll('#sb [data-o]')].map(x=>({key:x.dataset.o,name:x.dataset.n,door:x.dataset.d,qty:parseFloat(x.value)||0}));
-    if(t.id==='osave'){st.order={date:ymd(new Date()),rows};st.order.ts=stamp();ordersCol(uid).add(st.order).catch(e=>alert(e.message));stk().doc('lastorder').set(st.order).catch(()=>{});st.html='<p>Order saved. Use Morning check after loading.</p>';st.stage='done';drawSB()}
-    else window.open('https://wa.me/?text='+encodeURIComponent(orderText(rows,ymd(new Date()))),'_blank')
+    if(t.id==='osave'){st.order={date:ymd(new Date()),rows};st.order.ts=stamp();const ref=ordersCol(uid).doc();ref.set(st.order).catch(e=>alert(e.message));chkCol().doc(ref.id).set(st.order).catch(()=>{});st.order.id=ref.id;st.chk.unshift(st.order);pruneChk();stk().doc('lastorder').set(st.order).catch(()=>{});st.html='<p>Order saved. Use Morning check after loading.</p>';st.stage='done';drawSB()}
+    else shareText(orderText(rows,ymd(new Date())))
   }
 };
-$('stock').onchange=ev=>{if(ev.target.id==='sv'){st.v=ev.target.value;st.stage='pick';st.rows=null;st.mstep=1;drawSB()}};
+$('stock').onchange=ev=>{const i=ev.target.id;
+  if(i==='sv'){st.v=ev.target.value;st.stage='pick';st.rows=null;st.mstep=1;drawSB()}
+  else if(i==='ochk'){st.oid=ev.target.value;drawCompare()}
+  else if(i==='oonly'){st.only=ev.target.checked;drawCompare()}};
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>

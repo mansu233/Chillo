@@ -65,6 +65,7 @@ nav{display:none}
 .pills button{margin:0;flex:1;border-radius:8px 8px 0 0;background:#8995A8;font-size:.72rem;padding:12px 4px;letter-spacing:.1em}
 .pills button.on{background:var(--cyan)}
 .sav{width:72px;height:72px;margin:0 auto 6px;border:2px solid var(--line)}
+#upd{position:fixed;left:12px;right:12px;bottom:12px;z-index:60;background:var(--navy);color:#fff;border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow)}
 </style></head><body>
 
 <div id="login" class="hidden"><div class="lg-top"><h1>WELCOME!</h1><div class="lg-logo"><img src="icon.svg" width="112" height="112" alt=""></div></div>
@@ -101,6 +102,7 @@ nav{display:none}
 <div style="text-align:center;margin-bottom:10px"><div class="av sav"><svg width="44" height="44" viewBox="0 0 24 24" fill="#1DB1E8"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c.6-4.4 3.8-6.6 8-6.6s7.4 2.2 8 6.6z"/></svg></div><div id="sname" class="hname" style="color:var(--hl)"></div><div id="smail" class="muted"></div></div>
 <div id="tgbox"><label>Monthly target (SAR)</label><input id="tg" type="number" inputmode="decimal">
 <button id="stg" class="alt">Save target</button></div>
+<div id="brbox" class="hidden"><label>Branches (admin)</label><div id="brl"></div><input id="nb" placeholder="New branch, for example Jeddah"><button id="ba" class="alt">Add branch</button></div>
 <div id="arbox"><label>My areas</label><div id="arl"></div>
 <input id="na" placeholder="New area, for example Jeddah"><button id="aa" class="alt">Add area</button></div>
 <label>New 6-digit password</label><input id="np" type="password" inputmode="numeric" maxlength="6">
@@ -111,6 +113,7 @@ nav{display:none}
 <nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button><button data-t="cust" id="tcust" class="hidden">Customers</button><button data-t="stock" id="tstock" class="hidden">Stock</button><button data-t="lsetup" id="tlsetup" class="hidden">Load setup</button><button data-t="rem" id="trem" class="hidden">Reminders</button><button data-t="team" id="tteam" class="hidden">Team</button><button data-t="close" id="tclose" class="hidden">Close day</button></nav>
 </div>
 
+<div id="upd" class="hidden"><span id="updt" style="flex:1"></span><button id="updb" class="sm" style="background:#fff;color:#16478A;margin:0;min-width:90px">Update</button></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -141,6 +144,7 @@ function tab(t){
   if(t==='lsetup')drawSetup();
   if(t==='rem')drawRems();
   if(t==='team'){tm.det=null;loadTeam()}
+  if(t==='home')try{render()}catch(e){}
   if(t==='menu')drawMenu();
   if(t==='close')drawClose();
   $('htitle').textContent=TT[t]||'CHILLO';$('hback').classList.toggle('hidden',t==='menu');$('hset').classList.toggle('hidden',t==='set');window.scrollTo(0,0);
@@ -188,7 +192,7 @@ function render(){
   const need=target&&left>0?Math.max(0,(target-total)/left):0;
   const byArea={};entries.forEach(e=>{const k=e.area||'No area';byArea[k]=(byArea[k]||0)+e.amount});
   $('home').innerHTML=
-   `${dueHtml()}<div class="muted">${n.toLocaleString('en',{month:'long',year:'numeric'})}</div>
+   `${dueHtml()}${overHtml()}<div class="muted">${n.toLocaleString('en',{month:'long',year:'numeric'})}</div>
     <div class="big">${fmt(total)} SAR</div>
     <div class="row"><span>Daily average</span><b>${fmt(avg)}</b></div>
     <div class="row"><span>Expected month-end</span><b>${fmt(proj)}</b></div>
@@ -267,6 +271,7 @@ function applyAccess(){
   $('tlsetup').classList.toggle('hidden',!can('load.setup'));
   $('trem').classList.toggle('hidden',!can('rem.use'));
   $('tteam').classList.toggle('hidden',me.role!=='admin');
+  $('brbox').classList.toggle('hidden',me.role!=='admin');if(me.role==='admin')fillBranches();
   $('tclose').classList.toggle('hidden',!can('close.use'));
   $('tgbox').classList.toggle('hidden',!can('set.target'));
   $('arbox').classList.toggle('hidden',!can('set.areas'));
@@ -277,14 +282,14 @@ function weakMsg(p){
   return '';
 }
 function watchMembers(){
-  db.collection('users').onSnapshot(s=>{members=s.docs.map(d=>({id:d.id,...d.data()})).filter(m=>m.id!==uid);if(!openId)drawMembers()});
+  db.collection('users').onSnapshot(s=>{members=s.docs.map(d=>({id:d.id,...d.data()})).filter(m=>m.id!==uid);if(!openId)drawMembers();if(me.role==='admin')fillBranches()});
 }
 function drawMembers(){
   const m=members.find(x=>x.id===openId);
   if(m){
     const p=m.perms||{};
     $('mem').innerHTML=`<a id="back" style="margin:0">Back to members</a><h2>${esc(m.name)}</h2>
-    <div class="muted">${esc(m.email||'')}<br>${esc(m.branch||'No branch')}</div>
+    <div class="muted">${esc(m.email||'')}</div><label>Branch</label><select id="mbr"><option value="">No branch</option>${branchOpts(m.branch)}</select>
     <div class="row"><label for="act">Account active</label><input id="act" type="checkbox" ${m.active!==false?'checked':''}></div>`+
     Object.keys(PERMS).map(c=>`<h3>${c}</h3>`+PERMS[c].map(([k,t])=>`<div class="row"><label for="p_${k}">${t}</label><input id="p_${k}" data-k="${k}" type="checkbox" ${p[k]?'checked':''}></div>`).join('')).join('')+
     `<p><button id="pall" class="alt">Switch all on</button><button id="pnone" class="alt">Switch all off</button></p>
@@ -293,7 +298,7 @@ function drawMembers(){
   }
   $('mem').innerHTML=`<h2>Add member</h2>
   <label>Name</label><input id="mname"><label>Email</label><input id="memail" type="email">
-  <label>Branch</label><input id="mbranch"><label>Starting 6-digit password</label><input id="mpass" type="password" inputmode="numeric" maxlength="6">
+  <label>Branch</label><select id="mbranch"><option value="">No branch</option>${branchOpts()}</select><label>Starting 6-digit password</label><input id="mpass" type="password" inputmode="numeric" maxlength="6">
   <div class="err" id="amsg"></div><button id="addm">Create member</button>
   <h2>Members</h2>`+(members.map(m=>`<div class="row"><span>${esc(m.name)}<br><span class="muted">${esc(m.branch||'No branch')}${m.active===false?', inactive':''}</span></span><a data-m="${m.id}">Manage</a></div>`).join('')||'<div class="muted">No members yet.</div>');
 }
@@ -323,7 +328,7 @@ $('mem').onclick=async ev=>{
   if(t.id==='pall'||t.id==='pnone'){document.querySelectorAll('#mem [data-k]').forEach(c=>c.checked=t.id==='pall');return}
   if(t.id==='msave'){
     const perms={};document.querySelectorAll('#mem [data-k]').forEach(c=>perms[c.dataset.k]=c.checked);
-    db.collection('users').doc(openId).update({active:$('act').checked,perms}).then(()=>$('mmsg').textContent='Saved.').catch(e=>$('mmsg').textContent=e.message);
+    db.collection('users').doc(openId).update({active:$('act').checked,perms,branch:$('mbr').value}).then(()=>$('mmsg').textContent='Saved.').catch(e=>$('mmsg').textContent=e.message);
   }
   if(t.id==='mreset'){
     const m=members.find(x=>x.id===openId);
@@ -432,7 +437,7 @@ function isToday(c){
 function drawCust(){
   if(cmode==='edit')return drawEdit();if(cmode==='view')return drawView();if(cmode==='route')return drawRoute();
   $('cust').innerHTML=`<h2>Customers</h2><input id="cq" placeholder="Search shop, owner or phone" value="${esc(cq)}">
-  <label>Show</label><select id="cs">${[['all','All'],['today',"Today's route"],...DAYS.map(([d,t])=>['d'+d,t]),['random','Random days'],['call','On call'],['missed','Missed visit this week'],['owes','Owes money']].map(([v,t])=>`<option value="${v}" ${v===cshow?'selected':''}>${t}</option>`).join('')}</select>
+  <label>Show</label><select id="cs">${[['all','All'],['today',"Today's route"],...DAYS.map(([d,t])=>['d'+d,t]),['random','Random days'],['call','On call'],['missed','Missed visit this week'],['owes','Owes money'],['overdue','Overdue credit']].map(([v,t])=>`<option value="${v}" ${v===cshow?'selected':''}>${t}</option>`).join('')}</select>
   <label>Order</label><select id="co2"><option value="az">A to Z</option><option value="near" ${csort==='near'?'selected':''}>Nearest first</option><option value="credit" ${csort==='credit'?'selected':''}>Highest credit first</option></select>
   ${can('cust.add')?'<button id="cadd">Add customer</button>':''}${can('route.use')?'<button id="crt" class="alt">Create route from this list</button>':''}<div id="clist"></div>`;
   drawCList();
@@ -440,12 +445,12 @@ function drawCust(){
 function drawCList(){
   const q=cq.toLowerCase();
   let l=cs.filter(c=>(!q||((c.name||'')+' '+(c.owner||'')+' '+(c.phone||'')).toLowerCase().includes(q))&&
-    (cshow==='all'||(cshow==='today'&&isToday(c))||(cshow[0]==='d'&&c.type==='fixed'&&(c.days||[]).includes(+cshow.slice(1)))||(cshow==='random'&&c.type==='random')||(cshow==='call'&&c.type==='call')||(cshow==='missed'&&missed(c))||(cshow==='owes'&&(c.bal||0)>0)));
+    (cshow==='all'||(cshow==='today'&&isToday(c))||(cshow[0]==='d'&&c.type==='fixed'&&(c.days||[]).includes(+cshow.slice(1)))||(cshow==='random'&&c.type==='random')||(cshow==='call'&&c.type==='call')||(cshow==='missed'&&missed(c))||(cshow==='owes'&&(c.bal||0)>0)||(cshow==='overdue'&&isOver(c))));
   if(csort==='credit')l.sort((a,b)=>(b.bal||0)-(a.bal||0));
   if(csort==='near'&&pos)l.sort((a,b)=>(dist(a)??1e9)-(dist(b)??1e9));
   st.cl=l;
   $('clist').innerHTML=`<div class="muted">${l.length} customers</div>`+l.map(c=>{const d=dist(c);
-    return `<div class="row" data-v="${c.id}"><i class="dot"></i><span style="flex:1"><b>${esc(c.name)}</b><br><span class="muted">${esc(c.area||'No area')}, ${c.type==='fixed'?(c.days||[]).map(dn).join(' '):c.type==='call'?'On call':'Random'}${(c.bal||0)>0?'<br><b style="color:#C0392B">Owes '+fmt(c.bal)+'</b>':''}</span></span>
+    return `<div class="row" data-v="${c.id}"><i class="dot"></i><span style="flex:1"><b>${esc(c.name)}</b><br><span class="muted">${esc(c.area||'No area')}, ${c.type==='fixed'?(c.days||[]).map(dn).join(' '):c.type==='call'?'On call':'Random'}${(c.bal||0)>0?'<br><b style="color:#C0392B">Owes '+fmt(c.bal)+(isOver(c)?' (overdue)':'')+'</b>':''}</span></span>
     <span class="muted">${d!=null?d.toFixed(1)+' km':''}${missed(c)?'<br>Missed':''}</span></div>`}).join('');
 }
 function drawView(){
@@ -488,8 +493,9 @@ $('cust').onclick=ev=>{
   else if(t.id==='ccall')custs().doc(cid).update({calledAt:stamp()}).catch(e=>alert(e.message));
   else if(t.id==='cshoot'||t.id==='cpick'){const c=cs.find(x=>x.id===cid);pickImage(t.id==='cshoot',d=>userDoc().collection('photos').doc(cid).set({data:d,ts:stamp()}).then(()=>loadMedia(c)).catch(e=>alert(e.message)))}
   else if(t.id==='cfadd')showFz();
-  else if(t.id==='crt'){const all=st.cl||[];rt={list:all.filter(c=>c.lat!=null),skip:all.filter(c=>c.lat==null)};cmode='route';drawRoute()}
+  else if(t.id==='crt'){const all=st.cl||[];rt={list:all.filter(c=>c.lat!=null),skip:all.filter(c=>c.lat==null)};cmode='route';loadRoute().then(drawRoute)}
   else if(t.id==='rback'){cmode='list';drawCust()}
+  else if(t.id==='rsv'){const ids=rt.list.map(c=>c.id);userDoc().collection('routeorder').doc(routeKey()).set({ids}).then(()=>{rt.ids=ids;rt.note='Saved for '+routeLabel()+'.';drawRoute()}).catch(e=>alert(e.message))}
   else if(t.dataset.ru!==undefined||t.dataset.rd!==undefined){
     const i=+(t.dataset.ru??t.dataset.rd),j=t.dataset.ru!==undefined?i-1:i+1;
     if(j>=0&&j<rt.list.length){[rt.list[i],rt.list[j]]=[rt.list[j],rt.list[i]];drawRoute()}
@@ -497,21 +503,21 @@ $('cust').onclick=ev=>{
   else if(t.id==='rsh')window.open('https://wa.me/?text='+encodeURIComponent('Route '+ymd(new Date())+'\n'+rt.list.map((c,i)=>(i+1)+'. '+c.name+' https://maps.google.com/?q='+c.lat+','+c.lng).join('\n')),'_blank');
   else if(t.id==='lcr'||t.id==='lpy'){
     st.lt=t.id==='lcr'?'credit':'payment';
-    $('lform').innerHTML=`<label>${st.lt==='credit'?'Credit amount (SAR)':'Payment received (SAR)'}</label><input id="lamt" type="number" inputmode="decimal"><label>Date</label><input id="lda" type="date" value="${ymd(new Date())}"><label>Note (optional)</label><input id="lno"><div class="err" id="lmsg"></div><button id="lsave">Save</button><button id="lcancel" class="alt">Cancel</button>`;
+    $('lform').innerHTML=`<label>${st.lt==='credit'?'Credit amount (SAR)':'Payment received (SAR)'}</label><input id="lamt" type="number" inputmode="decimal"><label>Date</label><input id="lda" type="date" value="${ymd(new Date())}">${st.lt==='credit'?'<label>Due date (optional)</label><input id="ldue" type="date">':''}<label>Note (optional)</label><input id="lno"><div class="err" id="lmsg"></div><button id="lsave">Save</button><button id="lcancel" class="alt">Cancel</button>`;
   }
   else if(t.id==='lcancel')$('lform').innerHTML='';
   else if(t.id==='lsave'){
     const a=parseFloat($('lamt').value);if(!(a>0)){$('lmsg').textContent='Enter an amount above zero.';return}
     const b=db.batch(),ref=custs().doc(cid).collection('ledger').doc();
     const dt=$('lda').value;if(closedSet.has(dt)){$('lmsg').textContent='This day is closed. Ask the admin to reopen it.';return}
-    b.set(ref,{type:st.lt,amount:a,date:dt,note:$('lno').value.trim(),ts:stamp(),dc:true});b.set(dayRef(dt),{uid,date:dt,[st.lt==='credit'?'credit':'pay']:inc(a)},{merge:true});
-    b.update(custs().doc(cid),{bal:inc(st.lt==='credit'?a:-a)});
+    const due=st.lt==='credit'&&$('ldue')?$('ldue').value:'',ne={type:st.lt,amount:a,date:dt,note:$('lno').value.trim(),ts:stamp(),dc:true,due},cc=cs.find(x=>x.id===cid)||{},nb=(cc.bal||0)+(st.lt==='credit'?a:-a),dn2=nb>0?calcDue([...(st.led||[]),ne]):'';b.set(ref,ne);b.set(dayRef(dt),{uid,date:dt,[st.lt==='credit'?'credit':'pay']:inc(a)},{merge:true});
+    b.update(custs().doc(cid),{bal:inc(st.lt==='credit'?a:-a),dueNext:dn2});
     b.commit().catch(e=>alert(e.message));$('lform').innerHTML='';
   }
   else if(t.dataset.ld){
     const e=(st.led||[]).find(x=>x.id===t.dataset.ld);
     if(e&&closedSet.has(e.date)){alert('This day is closed. Ask the admin to reopen it.');return}
-    if(e&&confirm('Delete this credit entry?')){const b=db.batch();if(e.dc)b.set(dayRef(e.date),{uid,date:e.date,[e.type==='credit'?'credit':'pay']:inc(-e.amount)},{merge:true});b.delete(custs().doc(cid).collection('ledger').doc(e.id));b.update(custs().doc(cid),{bal:inc(e.type==='credit'?-e.amount:e.amount)});b.commit().catch(x=>alert(x.message))}
+    if(e&&confirm('Delete this credit entry?')){const b=db.batch(),cc=cs.find(x=>x.id===cid)||{},nb=(cc.bal||0)+(e.type==='credit'?-e.amount:e.amount),dn2=nb>0?calcDue((st.led||[]).filter(x=>x.id!==e.id)):'';if(e.dc)b.set(dayRef(e.date),{uid,date:e.date,[e.type==='credit'?'credit':'pay']:inc(-e.amount)},{merge:true});b.delete(custs().doc(cid).collection('ledger').doc(e.id));b.update(custs().doc(cid),{bal:inc(e.type==='credit'?-e.amount:e.amount),dueNext:dn2});b.commit().catch(x=>alert(x.message))}
   }
   else if(t.id==='fzscan')scanBarcode(v=>{$('fzs').value=String(v).trim().toUpperCase()});
   else if(t.id==='fzcam'||t.id==='fzgal')pickImage(t.id==='fzcam',d=>{fzPhoto=d;$('fzprev').src=d;$('fzprev').classList.remove('hidden')});
@@ -673,15 +679,16 @@ function drawRoute(){
     parts.push([i+1,i+ch.length,u]);
   }
   $('cust').innerHTML=`<a id="rback" style="margin:0">Back to customers</a><h2>Route</h2>
-  <label>Order by</label><select id="rso"><option value="">Keep list order</option><option value="near">Nearest first</option><option value="area">Area</option><option value="az">A to Z</option><option value="missed">Missed visits first</option></select>
-  <p class="muted">${l.length} stops. Use Up and Down to move a stop.</p>`+
+  <label>Order by</label><select id="rso"><option value="">Keep list order</option><option value="saved">My saved order</option><option value="near">Nearest first</option><option value="area">Area</option><option value="az">A to Z</option><option value="missed">Missed visits first</option></select>
+  <p class="muted">${l.length} stops. Use Up and Down to move a stop.${rt.ids?' A saved order for '+routeLabel()+' is applied.':''}</p>${rt.note?'<p class="muted">'+esc(rt.note)+'</p>':''}`+
   l.map((c,i)=>`<div class="row"><span>${i+1}. ${esc(c.name)}<br><span class="muted">${esc(c.area||'No area')}</span></span><span><a data-ru="${i}">Up</a><a data-rd="${i}">Down</a></span></div>`).join('')+
   (rt.skip.length?`<p class="muted">Skipped, no location saved: ${rt.skip.map(c=>esc(c.name)).join(', ')}</p>`:'')+
-  parts.map(x=>`<button data-go="${esc(x[2])}">Open in Google Maps, stops ${x[0]} to ${x[1]}</button>`).join('')+(l.length?'<button id="rsh" class="alt">Share route on WhatsApp</button>':'');
+  parts.map(x=>`<button data-go="${esc(x[2])}">Open in Google Maps, stops ${x[0]} to ${x[1]}</button>`).join('')+(l.length?'<button id="rsv" class="alt">Save this order for '+routeLabel()+'</button><button id="rsh" class="alt">Share route on WhatsApp</button>':'');
 }
 function routeSort(m){
   const l=rt.list;
-  if(m==='az')l.sort((a,b)=>a.name.localeCompare(b.name));
+  if(m==='saved')applySaved();
+  else if(m==='az')l.sort((a,b)=>a.name.localeCompare(b.name));
   else if(m==='area')l.sort((a,b)=>(a.area||'').localeCompare(b.area||'')||a.name.localeCompare(b.name));
   else if(m==='missed')l.sort((a,b)=>missed(b)-missed(a));
   else if(m==='near'){
@@ -732,9 +739,9 @@ async function loadLedger(c){
   try{const q=await custs().doc(id).collection('ledger').orderBy('ts','desc').get();l=q.docs.map(d=>({id:d.id,...d.data()}))}catch(e){}
   if(cid!==id||cmode!=='view'||!$('cled'))return;
   st.led=l;
-  $('cled').innerHTML=`<h3>Credit</h3><div class="big" style="font-size:30px;color:${(c.bal||0)>0?'#C0392B':'inherit'}">${fmt(c.bal||0)} SAR</div><div class="muted">Kept separate from your sales totals</div>`+
+  $('cled').innerHTML=`<h3>Credit</h3><div class="big" style="font-size:30px;color:${(c.bal||0)>0?'#C0392B':'inherit'}">${fmt(c.bal||0)} SAR</div><div class="muted">Kept separate from your sales totals</div>${dueLine(c)}`+
    (can('led.add')?'<button id="lcr" class="alt">Give credit</button><button id="lpy" class="alt">Payment received</button>':'')+'<div id="lform"></div>'+
-   (l.map(e=>`<div class="row"><span>${esc(e.date)}<br><span class="muted">${e.type==='credit'?'Credit given':'Payment received'}${e.note?', '+esc(e.note):''}</span></span><span><b style="color:${e.type==='credit'?'#C0392B':'#1E8E4E'}">${e.type==='credit'?'+':'-'}${fmt(e.amount)}</b>${can('led.edit')?`<a data-ld="${e.id}">Delete</a>`:''}</span></div>`).join('')||'<div class="muted">No entries yet.</div>');
+   (l.map(e=>`<div class="row"><span>${esc(e.date)}<br><span class="muted">${e.type==='credit'?'Credit given':'Payment received'}${e.due?', due '+esc(e.due):''}${e.note?', '+esc(e.note):''}</span></span><span><b style="color:${e.type==='credit'?'#C0392B':'#1E8E4E'}">${e.type==='credit'?'+':'-'}${fmt(e.amount)}</b>${can('led.edit')?`<a data-ld="${e.id}">Delete</a>`:''}</span></div>`).join('')||'<div class="muted">No entries yet.</div>');
 }
 const inc=n=>firebase.firestore.FieldValue.increment(n);
 
@@ -985,7 +992,71 @@ $('team').onchange=e=>{
   if(e.target.id==='tmon'&&e.target.value){tm.m=e.target.value;loadTeam()}
   if(e.target.id==='tbr'){tm.br=e.target.value;drawTeam()}
 };
-const VER='v1.23';
+function branchOpts(sel){const B=me.branches||[];return B.map(b=>`<option ${b===sel?'selected':''}>${esc(b)}</option>`).join('')+(sel&&!B.includes(sel)?`<option selected>${esc(sel)}</option>`:'')}
+const brImport=()=>[...new Set([me.branch,...members.map(m=>m.branch)].filter(b=>b&&!(me.branches||[]).includes(b)))];
+function fillBranches(){
+  const B=me.branches||[],imp=brImport();
+  $('brl').innerHTML=(B.length?B.map((b,i)=>`<div class="row"><span>${esc(b)}<br><span class="muted">${members.filter(m=>m.branch===b).length} members</span></span><span><a data-br="${i}">Rename</a><a data-bd="${i}">Remove</a></span></div>`).join(''):'<div class="muted">No branches yet.</div>')+(imp.length?`<button id="bimp" class="alt">Import ${imp.length} from members</button>`:'');
+}
+const saveBranches=()=>{userDoc().update({branches:me.branches}).catch(e=>alert(e.message));fillBranches();if(!openId)drawMembers()};
+$('ba').onclick=()=>{const v=$('nb').value.trim();me.branches=me.branches||[];if(v&&!me.branches.includes(v)){me.branches.push(v);$('nb').value='';saveBranches()}};
+$('nb').onkeydown=e=>{if(e.key==='Enter')$('ba').click()};
+$('brl').onclick=e=>{
+  const d=e.target.dataset,B=me.branches=me.branches||[];
+  if(e.target.id==='bimp'){brImport().forEach(b=>B.push(b));saveBranches()}
+  else if(d.br!==undefined){
+    const i=+d.br,old=B[i],nw=(prompt('New name for '+old,old)||'').trim();
+    if(nw&&nw!==old&&!B.includes(nw)){
+      B[i]=nw;saveBranches();const b=db.batch();
+      members.filter(m=>m.branch===old).forEach(m=>b.update(db.collection('users').doc(m.id),{branch:nw}));
+      if(me.branch===old){me.branch=nw;b.update(userDoc(),{branch:nw})}
+      b.commit().catch(()=>{});
+    }
+  }
+  else if(d.bd!==undefined){
+    const b=B[+d.bd],n=members.filter(m=>m.branch===b).length;
+    if(confirm('Remove "'+b+'"?'+(n?' '+n+' members use it and keep the name.':''))){B.splice(+d.bd,1);saveBranches()}
+  }
+};
+async function checkUpdate(){
+  try{
+    const r=await fetch('index.html?cb='+Date.now(),{cache:'no-store'}),m=(await r.text()).match(/const VER='(v[\d.]+)'/);
+    if(m&&m[1]!==VER){$('updt').textContent='New version '+m[1]+' is ready.';$('upd').classList.remove('hidden')}
+  }catch(e){}
+}
+$('updb').onclick=async()=>{
+  try{for(const k of await caches.keys())await caches.delete(k);for(const g of await navigator.serviceWorker.getRegistrations())await g.unregister()}catch(e){}
+  location.reload();
+};
+checkUpdate();document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate()});
+function calcDue(l){
+  let P=l.filter(e=>e.type==='payment').reduce((a,e)=>a+e.amount,0),due='';
+  const cr=l.filter(e=>e.type==='credit').sort((a,b)=>(a.date+(a.ts||'')).localeCompare(b.date+(b.ts||'')));
+  for(const c of cr){if(P>=c.amount-0.0001){P-=c.amount;continue}P=0;if(c.due&&(!due||c.due<due))due=c.due}
+  return due;
+}
+const isOver=c=>(c.bal||0)>0&&c.dueNext&&c.dueNext<ymd(new Date());
+function dueLine(c){
+  if(!((c.bal||0)>0)||!c.dueNext)return '';
+  const od=isOver(c);
+  return `<div style="color:${od?'#C0392B':'inherit'};font-weight:600">${od?'Overdue since ':'Next due '}${esc(c.dueNext)}</div>`;
+}
+function overHtml(){
+  const l=cs.filter(isOver);
+  return l.length?`<div class="row" style="border-left:4px solid #C0392B;padding-left:10px;margin-bottom:14px"><span><b>Overdue credit</b>${l.slice(0,5).map(c=>'<br>'+esc(c.name)+' '+fmt(c.bal)).join('')}${l.length>5?'<br>and '+(l.length-5)+' more':''}</span></div>`:'';
+}
+const routeKey=()=>cshow[0]==='d'?cshow:cshow==='today'?'d'+new Date().getDay():'all';
+const routeLabel=()=>{const k=routeKey();return k==='all'?'this list':dn(+k.slice(1))};
+function applySaved(){
+  const pos=new Map((rt.ids||[]).map((id,i)=>[id,i]));
+  rt.list.sort((a,b)=>(pos.has(a.id)?pos.get(a.id):1e6)-(pos.has(b.id)?pos.get(b.id):1e6));
+}
+async function loadRoute(){
+  rt.ids=null;rt.note='';
+  try{const d=await userDoc().collection('routeorder').doc(routeKey()).get();rt.ids=d.exists?d.data().ids:null}catch(e){}
+  if(rt.ids)applySaved();
+}
+const VER='v1.25';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={

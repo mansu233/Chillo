@@ -95,6 +95,8 @@ nav{display:none}
 <section id="stock" class="hidden"></section>
 <section id="lsetup" class="hidden"></section>
 <section id="rem" class="hidden"></section>
+<section id="team" class="hidden"></section>
+<section id="close" class="hidden"></section>
 <section id="set" class="hidden"><h2>Settings</h2>
 <div style="text-align:center;margin-bottom:10px"><div class="av sav"><svg width="44" height="44" viewBox="0 0 24 24" fill="#1DB1E8"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c.6-4.4 3.8-6.6 8-6.6s7.4 2.2 8 6.6z"/></svg></div><div id="sname" class="hname" style="color:var(--hl)"></div><div id="smail" class="muted"></div></div>
 <div id="tgbox"><label>Monthly target (SAR)</label><input id="tg" type="number" inputmode="decimal">
@@ -106,7 +108,7 @@ nav{display:none}
 <label>Text size</label><select id="fsz"><option value="0.9">Small</option><option value="1">Normal</option><option value="1.12">Large</option><option value="1.25">Extra large</option></select>
 <p class="muted">Chillo <span class="ver"></span></p><button id="out2">Sign out</button></section>
 </main>
-<nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button><button data-t="cust" id="tcust" class="hidden">Customers</button><button data-t="stock" id="tstock" class="hidden">Stock</button><button data-t="lsetup" id="tlsetup" class="hidden">Load setup</button><button data-t="rem" id="trem" class="hidden">Reminders</button></nav>
+<nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button><button data-t="cust" id="tcust" class="hidden">Customers</button><button data-t="stock" id="tstock" class="hidden">Stock</button><button data-t="lsetup" id="tlsetup" class="hidden">Load setup</button><button data-t="rem" id="trem" class="hidden">Reminders</button><button data-t="team" id="tteam" class="hidden">Team</button><button data-t="close" id="tclose" class="hidden">Close day</button></nav>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -134,11 +136,13 @@ const sales=()=>userDoc().collection('sales');
 
 function show(id){['login','wait','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
 function tab(t){
-  ['home','add','set','mem','prod','cust','stock','lsetup','rem','menu'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
+  ['home','add','set','mem','prod','cust','stock','lsetup','rem','team','menu','close'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   if(t==='lsetup')drawSetup();
   if(t==='rem')drawRems();
+  if(t==='team'){tm.det=null;loadTeam()}
   if(t==='menu')drawMenu();
+  if(t==='close')drawClose();
   $('htitle').textContent=TT[t]||'CHILLO';$('hback').classList.toggle('hidden',t==='menu');$('hset').classList.toggle('hidden',t==='set');window.scrollTo(0,0);
 }
 function reset(){editId=null;$('amt').value='';$('note').value='';$('aerr').textContent='';$('date').value=ymd(new Date());$('save').textContent='Save sale'}
@@ -169,7 +173,7 @@ function start(){
   unsub&&unsub();
   unsub=sales().where('date','>=',a).where('date','<=',b).orderBy('date','desc')
     .onSnapshot(s=>{entries=s.docs.map(d=>({id:d.id,...d.data()}));render()});
-  reset();$('tg').value=me.target||'';fillAreas();applyAccess();tab('menu');if(me.role==='admin')watchMembers();if(can('prod.view')||can('stock.use')||can('load.setup'))watchProducts();if(can('cust.view'))watchCusts();if(can('rem.use'))watchRems();if(can('stock.use')||can('load.setup'))loadStock();
+  reset();$('tg').value=me.target||'';fillAreas();applyAccess();tab('menu');loadClosed();if(me.role==='admin')watchMembers();if(can('prod.view')||can('stock.use')||can('load.setup'))watchProducts();if(can('cust.view'))watchCusts();if(can('rem.use'))watchRems();if(can('stock.use')||can('load.setup'))loadStock();
 }
 
 function render(){
@@ -194,7 +198,7 @@ function render(){
     <div class="muted">Need ${fmt(need)} per working day to reach it</div>`:'')+
    `<h3>By area</h3>`+(Object.keys(byArea).map(k=>`<div class="row"><span>${esc(k)}</span><b>${fmt(byArea[k])}</b></div>`).join('')||'<div class="muted">No sales yet this month.</div>')+
    `<h3>Entries</h3>`+entries.map(e=>`<div class="row"><i class="dot"></i><span style="flex:1">${e.date}<br><span class="muted">${esc(e.area||'No area')}${e.note?', '+esc(e.note):''}</span></span>
-    <span><b>${fmt(e.amount)}</b>${can('sales.edit')?'<a data-e="'+e.id+'">Edit</a>':''}${can('sales.delete')?'<a data-d="'+e.id+'">Delete</a>':''}</span></div>`).join('');
+    <span><b>${fmt(e.amount)}</b>${closedSet.has(e.date)?'<span class="muted">Closed</span>':''}${can('sales.edit')&&!closedSet.has(e.date)?'<a data-e="'+e.id+'">Edit</a>':''}${can('sales.delete')&&!closedSet.has(e.date)?'<a data-d="'+e.id+'">Delete</a>':''}</span></div>`).join('');
 }
 $('home').onclick=ev=>{
   const t=ev.target,e=entries.find(x=>x.id===t.dataset.e);
@@ -205,6 +209,7 @@ $('home').onclick=ev=>{
 $('save').onclick=()=>{
   const amount=parseFloat($('amt').value),date=$('date').value;
   if(!date||$('amt').value===''||!(amount>=0)){$('aerr').textContent='Enter the date and the amount.';return}
+  if(closedSet.has(date)){$('aerr').textContent='This day is closed. Ask the admin to reopen it.';return}
   const data={date,amount,area:$('area').value,note:$('note').value.trim()};
   (editId?sales().doc(editId).update(data):sales().add({...data,ts:firebase.firestore.FieldValue.serverTimestamp()}))
     .catch(x=>alert('Could not save: '+x.message));
@@ -245,6 +250,7 @@ const PERMS={
  'Sales':[['sales.add','Add daily sales'],['sales.edit','Edit sale entries'],['sales.delete','Delete sale entries'],['sales.report','See monthly report']],
  'Products':[['prod.view','View products'],['prod.price','View prices']],
  'Customers':[['cust.view','View customers and mark visits'],['cust.add','Add customers'],['cust.edit','Edit customers'],['cust.delete','Delete customers'],['cust.photo','Shop photo and freezer records']],
+ 'Closing sales':[['close.use','Close the day with cash count']],
  'Routes and reminders':[['route.use','Create routes'],['rem.use','Reminders']],
  'Credit ledger':[['led.view','View customer credit'],['led.add','Give credit and record payments'],['led.edit','Delete credit entries']],
  'Stock and orders':[['stock.use','Upload stock, make order, morning check, saved orders'],['load.setup','Own load limits and doors']],
@@ -260,6 +266,8 @@ function applyAccess(){
   $('tstock').classList.toggle('hidden',!can('stock.use'));
   $('tlsetup').classList.toggle('hidden',!can('load.setup'));
   $('trem').classList.toggle('hidden',!can('rem.use'));
+  $('tteam').classList.toggle('hidden',me.role!=='admin');
+  $('tclose').classList.toggle('hidden',!can('close.use'));
   $('tgbox').classList.toggle('hidden',!can('set.target'));
   $('arbox').classList.toggle('hidden',!can('set.areas'));
 }
@@ -280,7 +288,7 @@ function drawMembers(){
     <div class="row"><label for="act">Account active</label><input id="act" type="checkbox" ${m.active!==false?'checked':''}></div>`+
     Object.keys(PERMS).map(c=>`<h3>${c}</h3>`+PERMS[c].map(([k,t])=>`<div class="row"><label for="p_${k}">${t}</label><input id="p_${k}" data-k="${k}" type="checkbox" ${p[k]?'checked':''}></div>`).join('')).join('')+
     `<p><button id="pall" class="alt">Switch all on</button><button id="pnone" class="alt">Switch all off</button></p>
-    <div class="err" id="mmsg"></div><button id="msave">Save</button><button id="mreset" class="alt">Send password reset email</button><button id="mord" class="alt">View orders</button>`;
+    <div class="err" id="mmsg"></div><button id="msave">Save</button><button id="mreset" class="alt">Send password reset email</button><button id="mord" class="alt">View orders</button><button id="mdays" class="alt">Closed days</button>`;
     return;
   }
   $('mem').innerHTML=`<h2>Add member</h2>
@@ -307,6 +315,8 @@ $('mem').onclick=async ev=>{
   const t=ev.target;
   if(t.id==='addm')return addMember();
   if(t.id==='mord')return showMemberOrders();
+  if(t.id==='mdays')return showMemberDays();
+  if(t.dataset.ro){reopenDay(t.dataset.ro);return}
   ordActions(t,openId,showMemberOrders);
   if(t.dataset.m){openId=t.dataset.m;drawMembers();return}
   if(t.id==='back'){openId=null;drawMembers();return}
@@ -331,25 +341,23 @@ function watchProducts(){
 }
 function drawList(){
   const price=can('prod.price'),admin=me.role==='admin',q=pq.toLowerCase();
-  const list=prods.filter(p=>(!pcat||p.category===pcat)&&(!q||((p.name||'')+' '+(p.code||'')).toLowerCase().includes(q)));
-  $('plist').innerHTML=`<div class="muted">${list.length} products</div>`+list.map(p=>`<div class="row"><i class="dot"></i><span style="flex:1">${esc(p.name)}${p.isNew?' <b style="color:#E67E22;font-size:.75rem">NEW</b>':''}<br><span class="muted">${[admin?p.code:'',p.pack,p.category].filter(Boolean).map(esc).join(', ')}</span></span>
-   <span>${price&&p.price!=null?'<b>'+money(p.price)+'</b>':''}${admin?'<a data-pe="'+esc(p.id)+'">Edit</a><a data-pd="'+esc(p.id)+'">Delete</a>':''}</span></div>`).join('');
+  const list=prods.filter(p=>(!pcat||p.category===pcat)&&(!q||((p.name||'')+' '+(p.pack||'')+' '+(p.category||'')).toLowerCase().includes(q)));
+  $('plist').innerHTML=`<div class="muted">${list.length} products</div>`+list.map(p=>`<div class="row"><i class="dot"></i><span style="flex:1">${esc(p.name)}${p.isNew?' <b style="color:#E67E22;font-size:.75rem">NEW</b>':''}<br><span class="muted">${[p.pack,p.category,price?(p.price!=null?money(p.price)+' SAR / carton':'No price yet'):''].filter(Boolean).map(esc).join(', ')}</span></span>
+   <span>${admin?'<a data-pe="'+esc(p.id)+'">Edit</a><a data-pd="'+esc(p.id)+'">Delete</a>':''}</span></div>`).join('');
 }
 function drawProds(){
   const admin=me.role==='admin',cats=[...new Set(prods.map(p=>p.category).filter(Boolean))].sort();
   if(pedit!==null){
     const p=prods.find(x=>x.id===pedit)||{};
     $('prod').innerHTML=`<h2>${pedit?'Edit product':'Add product'}</h2>
-    <label>Code</label><input id="pcode" value="${esc(p.code)}" ${pedit?'readonly':''}>
     <label>Name</label><input id="pname" value="${esc(p.name)}">
     <label>Pack</label><input id="ppack" value="${esc(p.pack)}" placeholder="for example 1*30*60 GM">
-    <label>Unit</label><input id="punit" value="${esc(p.unit||'Carton')}">
     <label>Category</label><input id="pcat" list="cl" value="${esc(p.category)}"><datalist id="cl">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
-    <label>Price per unit (SAR)</label><input id="pprice" type="number" inputmode="decimal" value="${p.price==null?'':p.price}">
+    <label>Price per carton (SAR)</label><input id="pprice" type="number" inputmode="decimal" value="${p.price==null?'':p.price}">
     <div class="err" id="pmsg2"></div><button id="psave">Save</button><button id="pcancel" class="alt">Cancel</button>${pedit?'<button id="pdel" class="alt">Delete product</button>':''}`;
     return;
   }
-  $('prod').innerHTML=`<h2>Products</h2>${pendHtml()}<input id="pq" placeholder="Search name or code" value="${esc(pq)}">
+  $('prod').innerHTML=`<h2>Products</h2>${pendHtml()}<input id="pq" placeholder="Search by name" value="${esc(pq)}">
   <select id="pc"><option value="">All categories</option>${cats.map(c=>`<option ${c===pcat?'selected':''}>${esc(c)}</option>`).join('')}</select>`+
   (admin?`<button id="padd">Add product</button><button id="pimp" class="alt">Import from Excel</button><button id="ptpl" class="alt">Download Excel template</button><input id="pfile" type="file" accept=".xlsx,.xls,.csv" class="hidden"><div class="err" id="pmsg2"></div>`:'')+`<div id="plist"></div>`;
   drawList();
@@ -363,7 +371,7 @@ async function importFile(f){
       const k={};Object.keys(r).forEach(h=>k[String(h).trim().toLowerCase()]=r[h]);
       const code=String(k.code||'').trim(),name=String(k.name||'').trim();
       if(!code||!name){skip++;continue}
-      const pr=parseFloat(k.price);
+      const pr=parseFloat(k.price!==undefined?k.price:k['price per carton']);
       batch.set(db.collection('products').doc(idOf(code)),{code,name,pack:String(k.pack||'').trim(),unit:String(k.unit||'Carton').trim(),category:String(k.category||'').trim(),price:isNaN(pr)?null:pr},{merge:true});
       ok++;n++;
       if(n===400){await batch.commit();batch=db.batch();n=0}
@@ -373,7 +381,7 @@ async function importFile(f){
   }catch(e){msg.textContent='Import failed: '+e.message}
 }
 function template(){
-  const ws=XLSX.utils.aoa_to_sheet([['Code','Name','Pack','Unit','Category','Price'],['FG-ICE-0001','Example Vanilla Cups','1*30*40 GM','Carton','Cups',50]]);
+  const ws=XLSX.utils.aoa_to_sheet([['Code','Name','Pack','Unit','Category','Price per carton'],['FG-ICE-0001','Example Vanilla Cups','1*30*40 GM','Carton','Cups',50]]);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Products');XLSX.writeFile(wb,'chillo-products-template.xlsx');
 }
 $('prod').onclick=ev=>{
@@ -386,9 +394,10 @@ $('prod').onclick=ev=>{
   else if(t.id==='pimp')$('pfile').click();
   else if(t.id==='ptpl')template();
   else if(t.id==='psave'){
-    const code=$('pcode').value.trim(),name=$('pname').value.trim(),pr=parseFloat($('pprice').value);
-    if(!code||!name){$('pmsg2').textContent='Enter the code and name.';return}
-    db.collection('products').doc(idOf(code)).set({code,name,pack:$('ppack').value.trim(),unit:$('punit').value.trim()||'Carton',category:$('pcat').value.trim(),price:isNaN(pr)?null:pr,isNew:false},{merge:true}).catch(e=>alert(e.message));
+    const old=prods.find(x=>x.id===pedit),code=old?old.code:'NEW-'+Date.now().toString(36).toUpperCase(),name=$('pname').value.trim(),pr=parseFloat($('pprice').value);
+    if(!name){$('pmsg2').textContent='Enter the product name.';return}
+    if(!old&&prods.some(x=>(x.name||'').trim().toLowerCase()===name.toLowerCase())){$('pmsg2').textContent='A product with this name already exists.';return}
+    db.collection('products').doc(old?old.id:idOf(code)).set({code,name,pack:$('ppack').value.trim(),unit:'Carton',category:$('pcat').value.trim(),price:isNaN(pr)?null:pr,isNew:false},{merge:true}).catch(e=>alert(e.message));
     pedit=null;drawProds();
   }
   else if(t.id==='pdel'&&confirm('Delete this product?')){db.collection('products').doc(pedit).delete().catch(e=>alert(e.message));pedit=null;drawProds()}
@@ -494,13 +503,15 @@ $('cust').onclick=ev=>{
   else if(t.id==='lsave'){
     const a=parseFloat($('lamt').value);if(!(a>0)){$('lmsg').textContent='Enter an amount above zero.';return}
     const b=db.batch(),ref=custs().doc(cid).collection('ledger').doc();
-    b.set(ref,{type:st.lt,amount:a,date:$('lda').value,note:$('lno').value.trim(),ts:stamp()});
+    const dt=$('lda').value;if(closedSet.has(dt)){$('lmsg').textContent='This day is closed. Ask the admin to reopen it.';return}
+    b.set(ref,{type:st.lt,amount:a,date:dt,note:$('lno').value.trim(),ts:stamp(),dc:true});b.set(dayRef(dt),{uid,date:dt,[st.lt==='credit'?'credit':'pay']:inc(a)},{merge:true});
     b.update(custs().doc(cid),{bal:inc(st.lt==='credit'?a:-a)});
     b.commit().catch(e=>alert(e.message));$('lform').innerHTML='';
   }
   else if(t.dataset.ld){
     const e=(st.led||[]).find(x=>x.id===t.dataset.ld);
-    if(e&&confirm('Delete this credit entry?')){const b=db.batch();b.delete(custs().doc(cid).collection('ledger').doc(e.id));b.update(custs().doc(cid),{bal:inc(e.type==='credit'?-e.amount:e.amount)});b.commit().catch(x=>alert(x.message))}
+    if(e&&closedSet.has(e.date)){alert('This day is closed. Ask the admin to reopen it.');return}
+    if(e&&confirm('Delete this credit entry?')){const b=db.batch();if(e.dc)b.set(dayRef(e.date),{uid,date:e.date,[e.type==='credit'?'credit':'pay']:inc(-e.amount)},{merge:true});b.delete(custs().doc(cid).collection('ledger').doc(e.id));b.update(custs().doc(cid),{bal:inc(e.type==='credit'?-e.amount:e.amount)});b.commit().catch(x=>alert(x.message))}
   }
   else if(t.id==='fzscan')scanBarcode(v=>{$('fzs').value=String(v).trim().toUpperCase()});
   else if(t.id==='fzcam'||t.id==='fzgal')pickImage(t.id==='fzcam',d=>{fzPhoto=d;$('fzprev').src=d;$('fzprev').classList.remove('hidden')});
@@ -847,7 +858,7 @@ function offerNew(rows){
   }
 }
 function pendHtml(){
-  return me.role==='admin'&&reqs.length?`<h3>Waiting for approval (${reqs.length})</h3>`+reqs.map(r=>`<div class="row"><span>${esc(r.name)}<br><span class="muted">${esc(r.code)}</span></span><span><a data-ap="${esc(r.id)}">Approve</a><a data-rj="${esc(r.id)}">Reject</a></span></div>`).join('')+'<p></p>':'';
+  return me.role==='admin'&&reqs.length?`<h3>Waiting for approval (${reqs.length})</h3>`+reqs.map(r=>`<div class="row"><span>${esc(r.name)}<br><span class="muted">${esc(r.pack||'')}</span></span><span><a data-ap="${esc(r.id)}">Approve</a><a data-rj="${esc(r.id)}">Reject</a></span></div>`).join('')+'<p></p>':'';
 }
 const ordersCol=u=>db.collection('users').doc(u).collection('orders');
 function orderText(rows,date){
@@ -896,8 +907,8 @@ $('lsetup').onclick=ev=>{
   });
   b.commit().then(()=>$('cfm').textContent='Saved.').catch(e=>$('cfm').textContent=e.message);
 };
-const TT={menu:'CHILLO',home:'MONTH',add:'ADD SALE',set:'SETTINGS',mem:'MEMBERS',prod:'PRODUCTS',cust:'CUSTOMERS',stock:'STOCK',lsetup:'LOAD SETUP',rem:'REMINDERS'};
-const GC={home:['#1DB1E8','#2A7DE1'],add:['#2BB673','#1E9E5A'],cust:['#FF8A5B','#F25C54'],prod:['#8E6BFF','#6A4CE0'],stock:['#2A6FD1','#16478A'],lsetup:['#FFB347','#F08A24'],rem:['#F0566A','#D63A5A'],mem:['#19B5A5','#0E8F8C'],set:['#6F7F95','#4B5A70']};
+const TT={team:'TEAM',menu:'CHILLO',home:'MONTH',add:'ADD SALE',set:'SETTINGS',mem:'MEMBERS',prod:'PRODUCTS',cust:'CUSTOMERS',stock:'STOCK',lsetup:'LOAD SETUP',rem:'REMINDERS',close:'CLOSE DAY'};
+const GC={home:['#1DB1E8','#2A7DE1'],add:['#2BB673','#1E9E5A'],close:['#E2A400','#C77F00'],cust:['#FF8A5B','#F25C54'],prod:['#8E6BFF','#6A4CE0'],stock:['#2A6FD1','#16478A'],team:['#E84393','#C2185B'],lsetup:['#FFB347','#F08A24'],rem:['#F0566A','#D63A5A'],mem:['#19B5A5','#0E8F8C'],set:['#6F7F95','#4B5A70']};
 function drawMenu(){
   $('mgrid').innerHTML=[...document.querySelectorAll('nav button')].filter(b=>!b.classList.contains('hidden')).sort((x,y)=>Object.keys(GC).indexOf(x.dataset.t)-Object.keys(GC).indexOf(y.dataset.t)).map(b=>`<button class="gi" data-g="${b.dataset.t}"><span class="gc" style="background:linear-gradient(135deg,${GC[b.dataset.t][0]},${GC[b.dataset.t][1]})">${b.querySelector('svg').outerHTML}</span>${b.querySelector('span').textContent}</button>`).join('');
   $('mbtn').classList.toggle('hidden',!can('sales.add'));
@@ -912,7 +923,69 @@ $('kp').onclick=e=>{
   if(k==='b')v=v.slice(0,-1);else if(v.replace('.','').length<9)v=(v==='0'?'':v)+k;
   $('amt').value=v;
 };
-const VER='v1.20';
+let tm={m:ymd(new Date()).slice(0,7),br:'',data:[],det:null};
+function workDays(m){
+  const [y,mo]=m.split('-').map(Number),dim=new Date(y,mo,0).getDate(),n=new Date(),cur=n.getFullYear()===y&&n.getMonth()===mo-1,past=new Date(y,mo-1,1)<new Date(n.getFullYear(),n.getMonth(),1);
+  let work=0,done=0;
+  for(let d=1;d<=dim;d++)if(new Date(y,mo-1,d).getDay()!==5){work++;if(past||(cur&&d<=n.getDate()))done++}
+  return{work,done:Math.max(done,1),cur};
+}
+async function loadTeam(){
+  $('team').innerHTML='<p class="muted">Loading...</p>';
+  const [y,mo]=tm.m.split('-').map(Number),a=tm.m+'-01',b=tm.m+'-'+pad(new Date(y,mo,0).getDate());
+  let us=[];try{us=(await db.collection('users').get()).docs.map(d=>({id:d.id,...d.data()}))}catch(e){}
+  tm.data=await Promise.all(us.map(async p=>{
+    let tot=0,ents=[],byArea={};
+    try{const q=await db.collection('users').doc(p.id).collection('sales').where('date','>=',a).where('date','<=',b).get();
+      q.docs.forEach(d=>{const e=d.data();tot+=e.amount;ents.push(e);const k=e.area||'No area';byArea[k]=(byArea[k]||0)+e.amount})}catch(e){}
+    ents.sort((x,z)=>z.date.localeCompare(x.date));
+    return{id:p.id,name:p.name||p.email||'?',branch:p.branch||'',target:p.target||0,inactive:p.active===false,tot,ents,byArea};
+  }));
+  drawTeam();
+}
+function tStats(p,wd){const avg=p.tot/wd.done,proj=wd.cur?avg*wd.work:p.tot;return{avg,proj,pct:p.target?Math.round(p.tot/p.target*100):null}}
+function drawTeam(){
+  const wd=workDays(tm.m),all=tm.data.filter(p=>!(p.inactive&&!p.tot)),brs=[...new Set(all.map(p=>p.branch||'No branch'))].sort();
+  if(tm.det){
+    const p=tm.data.find(x=>x.id===tm.det),t=tStats(p,wd);
+    $('team').innerHTML=`<a id="tback" style="margin:0">Back to team</a><h2>${esc(p.name)}</h2><div class="muted">${esc(p.branch||'No branch')}</div>
+    <div class="row"><span>Total sales</span><b>${fmt(p.tot)} SAR</b></div><div class="row"><span>Entries</span><b>${p.ents.length}</b></div>
+    <div class="row"><span>Daily average</span><b>${fmt(t.avg)}</b></div>${wd.cur?`<div class="row"><span>Expected month-end</span><b>${fmt(t.proj)}</b></div>`:''}
+    <div class="row"><span>Target</span><b>${p.target?fmt(p.target)+' ('+t.pct+'%)':'Not set'}</b></div>
+    <label style="display:block;margin-top:14px">Monthly target (SAR)</label><input id="ttg" type="number" inputmode="decimal" value="${p.target||''}"><button id="ttsave">Save target</button><div class="err" id="tmsg"></div>
+    <h3>By area</h3>${Object.keys(p.byArea).map(k=>`<div class="row"><span>${esc(k)}</span><b>${fmt(p.byArea[k])}</b></div>`).join('')||'<div class="muted">No sales this month.</div>'}
+    <h3>Latest entries</h3>${p.ents.slice(0,15).map(e=>`<div class="row"><span>${esc(e.date)}<br><span class="muted">${esc(e.area||'No area')}${e.note?', '+esc(e.note):''}</span></span><b>${fmt(e.amount)}</b></div>`).join('')}`;
+    return;
+  }
+  const L=all.filter(p=>!tm.br||(p.branch||'No branch')===tm.br).sort((x,z)=>z.tot-x.tot);
+  const tot=L.reduce((s,p)=>s+p.tot,0),tg=L.reduce((s,p)=>s+p.target,0),proj=L.reduce((s,p)=>s+tStats(p,wd).proj,0),pc=tg?Math.round(tot/tg*100):null;
+  const bt={};all.forEach(p=>{const k=p.branch||'No branch',o=bt[k]||(bt[k]={tot:0,tg:0});o.tot+=p.tot;o.tg+=p.target});
+  $('team').innerHTML=`<label>Month</label><input id="tmon" type="month" value="${tm.m}"><label>Branch</label><select id="tbr"><option value="">All branches</option>${brs.map(b=>`<option ${b===tm.br?'selected':''}>${esc(b)}</option>`).join('')}</select>
+  <h3>${tm.br?esc(tm.br):'All branches'}</h3><div class="row"><b>Total sales</b><b>${fmt(tot)} SAR</b></div>${tg?`<div class="row"><span>Target ${fmt(tg)}</span><b>${pc}%</b></div><div class="bar"><i style="width:${Math.min(pc,100)}%"></i></div>`:''}
+  ${wd.cur?`<div class="row"><span>Expected month-end</span><b>${fmt(proj)}</b></div>`:''}`+
+  (brs.length>1&&!tm.br?'<h3>By branch</h3>'+Object.keys(bt).sort().map(k=>`<div class="row"><span>${esc(k)}</span><span><b>${fmt(bt[k].tot)}</b>${bt[k].tg?' <span class="muted">'+Math.round(bt[k].tot/bt[k].tg*100)+'%</span>':''}</span></div>`).join(''):'')+
+  '<h3>People</h3>'+(L.map(p=>{const t=tStats(p,wd);return `<div class="row" data-tp="${p.id}"><i class="dot"></i><span style="flex:1">${esc(p.name)}${p.inactive?' <span class="muted">(inactive)</span>':''}<br><span class="muted">${esc(p.branch||'No branch')}, avg ${fmt(t.avg)}/day${wd.cur?', expected '+fmt(t.proj):''}</span></span><span style="text-align:right"><b>${fmt(p.tot)}</b><br><span class="muted">${t.pct==null?'No target':t.pct+'%'}</span></span></div>`}).join('')||'<div class="muted">No people.</div>')+
+  '<p></p><button id="tshare" class="alt">Share team report</button>';
+}
+function teamText(){
+  const wd=workDays(tm.m),L=tm.data.filter(p=>(!tm.br||(p.branch||'No branch')===tm.br)&&!(p.inactive&&!p.tot)).sort((x,z)=>z.tot-x.tot);
+  return 'Team sales '+tm.m+(tm.br?' - '+tm.br:'')+'\n'+L.map(p=>{const t=tStats(p,wd);return p.name+': '+fmt(p.tot)+(t.pct==null?'':' ('+t.pct+'% of target)')}).join('\n')+'\nTotal: '+fmt(L.reduce((s,p)=>s+p.tot,0))+' SAR';
+}
+$('team').onclick=async e=>{
+  const t=e.target,row=t.closest('[data-tp]');
+  if(row){tm.det=row.dataset.tp;drawTeam();return}
+  if(t.id==='tback'){tm.det=null;drawTeam()}
+  else if(t.id==='tshare')shareText(teamText());
+  else if(t.id==='ttsave'){
+    const v=parseFloat($('ttg').value)||0,p=tm.data.find(x=>x.id===tm.det);
+    try{await db.collection('users').doc(p.id).update({target:v});p.target=v;if(p.id===uid)me.target=v;$('tmsg').textContent='Saved.';drawTeam()}catch(x){$('tmsg').textContent=x.message}
+  }
+};
+$('team').onchange=e=>{
+  if(e.target.id==='tmon'&&e.target.value){tm.m=e.target.value;loadTeam()}
+  if(e.target.id==='tbr'){tm.br=e.target.value;drawTeam()}
+};
+const VER='v1.23';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={
@@ -924,7 +997,8 @@ const IC={
  cust:'<path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M9 20v-5h6v5"/><path d="M4 9c0 2 3 2 4 0 1 2 3 2 4 0 1 2 3 2 4 0 1 2 4 2 4 0"/>',
  stock:'<path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/>',
  lsetup:'<path d="M2 6h12v10H2zM14 10h4l3 3v3h-7"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/>',
- rem:'<path d="M6 16v-5a6 6 0 0112 0v5l2 2H4zM10 21h4"/>'};
+ team:'<path d="M8 4h8v5a4 4 0 01-8 0zM6 5H3v2a3 3 0 003 3M18 5h3v2a3 3 0 01-3 3M12 13v4M8 20h8"/>',rem:'<path d="M6 16v-5a6 6 0 0112 0v5l2 2H4zM10 21h4"/>',
+ close:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>'};
 document.querySelectorAll('nav button').forEach(b=>{const l=b.textContent;b.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[b.dataset.t]+'</svg><span>'+l+'</span>'});
 
 document.querySelectorAll('.ver').forEach(e=>e.textContent=VER);
@@ -975,6 +1049,59 @@ function shareCompare(){
   const l=cmpRows().filter(x=>x.df!==0).sort((a,b)=>a.df-b.df),o=st.chk.find(x=>x.id===st.oid)||st.order;
   shareText('Morning check '+ymd(new Date())+(o?'\nOrder: '+orderLabel(o):'')+'\n'+l.map(x=>x.name+': expected '+x.exp+', current '+x.cur+' ('+(x.df>0?'+':'')+x.df+')').join('\n'));
 }
+let closedSet=new Set(),cl={date:''};
+const DEN=[500,200,100,50,20,10,5,1];
+const dayRef=d=>db.collection('days').doc(uid+'_'+d);
+function loadClosed(){db.collection('days').where('uid','==',uid).where('closed','==',true).get().then(q=>{closedSet=new Set(q.docs.map(d=>d.data().date))}).catch(()=>{})}
+function cnt(){
+  let t=0;document.querySelectorAll('#close [data-dn]').forEach(x=>{const n=parseFloat(x.value)||0,v=n*x.dataset.dn;t+=v;const sb=document.querySelector('#close [data-sub="'+x.dataset.dn+'"]');if(sb)sb.textContent=money(v)});
+  const co=$('ccoin');if(co)t+=parseFloat(co.value)||0;return r3(t);
+}
+function upCount(){
+  const c=cnt(),d=r3(c-cl.exp),e=$('cdif');$('ctot').textContent=money(c);
+  e.textContent=d===0?'OK':d>0?'Over +'+money(d):'Short '+money(d);e.style.color=d===0?'#1E8E4E':'#C0392B';
+}
+async function drawClose(){
+  const d=cl.date||(cl.date=ymd(new Date()));$('close').innerHTML='<p class="muted">Loading...</p>';
+  let tot=0,day={};
+  try{const q=await sales().where('date','==',d).get();q.docs.forEach(x=>tot+=x.data().amount)}catch(e){}
+  try{const x=await dayRef(d).get();day=x.exists?x.data():{}}catch(e){}
+  const cr=day.credit||0,py=day.pay||0,closed=!!day.closed,exp=closed&&day.expected!=null?day.expected:r3(tot-cr+py);
+  Object.assign(cl,{tot,cr,py,exp,closed,day});
+  const nt=day.notes||{},ln=(a,b)=>`<div class="row"><span>${a}</span><b>${b}</b></div>`;
+  $('close').innerHTML=`<label>Date</label><input type="date" id="cdate" value="${d}"><h3>${closed?'Closed day':'Open day'}</h3>`+
+   ln('Sales total',money(closed&&day.sales!=null?day.sales:tot)+' SAR')+ln('Credit given (not in sales)','- '+money(cr))+ln('Payments received','+ '+money(py))+
+   `<div class="row"><b>Expected cash</b><b>${money(exp)} SAR</b></div><p class="muted">Credit you give is your own risk, so it is taken off the cash you should have. Payments you collect from customers are added.</p><h3>Cash count</h3>`+
+   DEN.map(n=>`<div class="row"><span>${n} x</span><input data-dn="${n}" type="number" inputmode="numeric" min="0" value="${closed?(nt[n]||''):''}" ${closed?'disabled':''} style="width:90px;margin:0;padding:6px"><b data-sub="${n}">0</b></div>`).join('')+
+   `<div class="row"><span>Coins (SAR)</span><input id="ccoin" type="number" inputmode="decimal" value="${closed?(nt.coins||''):''}" ${closed?'disabled':''} style="width:90px;margin:0;padding:6px"></div>`+
+   `<div class="row"><b>Counted</b><b id="ctot">0</b></div><div class="row"><b>Difference</b><b id="cdif"></b></div><p></p>`+
+   (closed?(me.role==='admin'?'<button id="creopen" class="alt">Reopen this day</button>':'<p class="muted">This day is closed. Only the admin can reopen it.</p>'):'<button id="cclose">Close day</button>')+
+   '<button id="cshare2" class="alt">Share report</button>';
+  upCount();
+}
+function closeText(){
+  const c=cnt(),d=r3(c-cl.exp),nt=[];document.querySelectorAll('#close [data-dn]').forEach(x=>{if(x.value)nt.push(x.dataset.dn+' x '+x.value)});
+  return 'Closing report '+cl.date+(me.name?' - '+me.name:'')+'\nSales: '+money(cl.closed&&cl.day.sales!=null?cl.day.sales:cl.tot)+'\nCredit given (not in sales): -'+money(cl.cr)+'\nPayments received: +'+money(cl.py)+'\nExpected cash: '+money(cl.exp)+'\nCounted cash: '+money(c)+'\nDifference: '+(d===0?'OK':(d>0?'Over +':'Short ')+money(d))+(nt.length?'\nNotes: '+nt.join(', '):'');
+}
+$('close').oninput=e=>{if(e.target.dataset.dn||e.target.id==='ccoin')upCount()};
+$('close').onchange=e=>{if(e.target.id==='cdate'){cl.date=e.target.value;drawClose()}};
+$('close').onclick=async e=>{
+  const t=e.target;
+  if(t.id==='cclose'){
+    const c=cnt(),dif=r3(c-cl.exp);
+    if(!confirm('Close '+cl.date+'?\nExpected '+money(cl.exp)+', counted '+money(c)+', difference '+money(dif)+'.\nSales for this day are locked after closing.'))return;
+    const notes={};document.querySelectorAll('#close [data-dn]').forEach(x=>{if(x.value)notes[x.dataset.dn]=parseFloat(x.value)||0});if($('ccoin').value)notes.coins=parseFloat($('ccoin').value)||0;
+    try{await dayRef(cl.date).set({uid,date:cl.date,closed:true,closedAt:stamp(),sales:cl.tot,credit:cl.cr,pay:cl.py,expected:cl.exp,counted:c,diff:dif,notes},{merge:true});closedSet.add(cl.date);drawClose()}
+    catch(x){alert('Could not close: '+x.message)}
+  }
+  else if(t.id==='creopen'){if(confirm('Reopen this day?'))try{await dayRef(cl.date).update({closed:false,reopenedAt:stamp()});closedSet.delete(cl.date);drawClose()}catch(x){alert(x.message)}}
+  else if(t.id==='cshare2')shareText(closeText());
+};
+async function showMemberDays(){
+  let l=[];try{const q=await db.collection('days').where('uid','==',openId).where('closed','==',true).get();l=q.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.date.localeCompare(a.date))}catch(e){}
+  $('mem').innerHTML='<a id="back" style="margin:0">Back to members</a><h2>Closed days</h2>'+(l.map(d=>`<div class="row"><span>${esc(d.date)}<br><span class="muted">Sales ${money(d.sales||0)}, counted ${money(d.counted||0)}, difference ${money(d.diff||0)}</span></span><a data-ro="${d.id}">Reopen</a></div>`).join('')||'<p class="muted">No closed days.</p>');
+}
+function reopenDay(id){if(confirm('Reopen this day? The salesperson can edit it again.'))db.collection('days').doc(id).update({closed:false,reopenedAt:stamp()}).then(showMemberDays).catch(e=>alert(e.message))}
 let st={chk:[],opts:{dir:'down',hrs:12},unk:[],fix:{},mstep:1,v:'order',stage:'pick',cfg:{},doors:[],night:null,order:null,rows:null,html:''};
 const stk=()=>userDoc().collection('stock');
 async function loadStock(){

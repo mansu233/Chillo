@@ -65,6 +65,9 @@ nav{display:none}
 .pills button{margin:0;flex:1;border-radius:8px 8px 0 0;background:#8995A8;font-size:.72rem;padding:12px 4px;letter-spacing:.1em}
 .pills button.on{background:var(--cyan)}
 .sav{width:72px;height:72px;margin:0 auto 6px;border:2px solid var(--line)}
+.mcard{border:1px solid var(--line);border-left:5px solid var(--line);border-radius:6px;padding:12px 14px;margin:0 0 14px}
+.mcard.ok{border-left-color:#1E8E4E}
+.mok{color:#1E8E4E;font-weight:600;margin:6px 0 8px}
 #upd{position:fixed;left:12px;right:12px;bottom:12px;z-index:60;background:var(--navy);color:#fff;border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow)}
 </style></head><body>
 
@@ -899,7 +902,7 @@ function ordActions(t,ouid,after){
 function drawSetup(){
   if(st.doors.length!==8){$('lsetup').innerHTML='<p class="muted">Loading...</p>';return}
   const src=knownList().sort((a,b)=>a.name.localeCompare(b.name));
-  $('lsetup').innerHTML=`<h2>Load setup</h2><p class="muted">Set your vehicle's door names, then each product's maximum load and door.</p><h3>Order rounding and cleanup</h3><label>Round direction (used with each product's Round step)</label><select id="odir"><option value="down">Down (never over the max)</option><option value="up" ${st.opts.dir==='up'?'selected':''}>Up</option><option value="near" ${st.opts.dir==='near'?'selected':''}>Nearest</option></select><label>Delete saved orders after (hours, 0 = never)</label><input id="ohr" type="number" value="${st.opts.hrs}"><h3>Door names</h3>`+
+  $('lsetup').innerHTML=`<h2>Load setup</h2><p class="muted">Set your vehicle's door names, then each product's maximum load and door.</p><h3>Order rounding and cleanup</h3><label>Order type (default)</label><select id="smode">${modeOpts(omode())}</select><label>Round to multiples of (all products, 0 = none)</label><input id="smult" type="number" value="${st.opts.mult||''}" placeholder="for example 5"><p class="muted">A product's own Round box overrides this multiple.</p><label>Delete saved orders after (hours, 0 = never)</label><input id="ohr" type="number" value="${st.opts.hrs}"><h3>Door names</h3>`+
    st.doors.map((d,i)=>`<input data-dn="${i}" value="${esc(d)}">`).join('')+`<h3>Products</h3>`+
    (src.length?src.map(r=>{const c=st.cfg[r.key]||{};return `<div class="row"><span>${esc(r.name)}</span><span style="display:flex;gap:6px"><input data-k="${r.key}" data-f="max" type="number" placeholder="Max" value="${c.max||''}" style="width:64px;margin:0;padding:6px"><input data-k="${r.key}" data-f="step" type="number" placeholder="Round" value="${c.step||''}" style="width:64px;margin:0;padding:6px"><select data-k="${r.key}" data-f="door" style="width:96px;margin:0;padding:6px"><option value="">Door</option>${st.doors.map((d,i)=>`<option value="${i}" ${c.door===i?'selected':''}>${esc(d)}</option>`).join('')}</select></span></div>`}).join(''):'<p class="muted">No products yet. Add products, or upload a night stock screenshot first.</p>')+
    `<p></p><button id="cfsave">Save setup</button><div class="muted" id="cfm"></div>`;
@@ -907,7 +910,7 @@ function drawSetup(){
 $('lsetup').onclick=ev=>{
   if(ev.target.id!=='cfsave')return;
   const b=db.batch(),cl=userDoc().collection('loadcfg');
-  st.doors=[...document.querySelectorAll('#lsetup [data-dn]')].map(x=>x.value.trim()||'Door');b.set(cl.doc('_doors'),{names:st.doors});st.opts={dir:$('odir').value,hrs:parseFloat($('ohr').value)||0};b.set(cl.doc('_opts'),st.opts);
+  st.doors=[...document.querySelectorAll('#lsetup [data-dn]')].map(x=>x.value.trim()||'Door');b.set(cl.doc('_doors'),{names:st.doors});st.opts={mode:$('smode').value,dir:$('smode').value==='max'?'up':'down',mult:parseFloat($('smult').value)||0,hrs:parseFloat($('ohr').value)||0};b.set(cl.doc('_opts'),st.opts);
   knownList().forEach(r=>{
     const mx=document.querySelector(`#lsetup [data-k="${r.key}"][data-f=max]`),dr=document.querySelector(`#lsetup [data-k="${r.key}"][data-f=door]`);if(!mx)return;
     const c={name:r.name,max:parseFloat(mx.value)||0,step:parseFloat(document.querySelector(`#lsetup [data-k="${r.key}"][data-f=step]`).value)||0,door:dr.value===''?null:+dr.value};st.cfg[r.key]=c;b.set(cl.doc(r.key),c);
@@ -1056,7 +1059,7 @@ async function loadRoute(){
   try{const d=await userDoc().collection('routeorder').doc(routeKey()).get();rt.ids=d.exists?d.data().ids:null}catch(e){}
   if(rt.ids)applySaved();
 }
-const VER='v1.26';
+const VER='v1.28';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={
@@ -1073,9 +1076,19 @@ const IC={
 document.querySelectorAll('nav button').forEach(b=>{const l=b.textContent;b.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[b.dataset.t]+'</svg><span>'+l+'</span>'});
 
 document.querySelectorAll('.ver').forEach(e=>e.textContent=VER);
+const MODES=[['min','Minimum order (lower multiple)'],['max','Maximum order (higher multiple)'],['exact','As required quantity (exact)']];
+const modeOpts=sel=>MODES.map(([v,l])=>`<option value="${v}" ${v===sel?'selected':''}>${l}</option>`).join('');
+const omode=()=>st.opts.mode||(st.opts.dir==='up'||st.opts.dir==='near'?'max':'min');
+const eff=()=>({mode:(st.ov&&st.ov.mode)||omode(),mult:st.ov&&st.ov.mult!=null?st.ov.mult:(st.opts.mult||0)});
+function exLine(){
+  const r=(st.rows||[]).find(x=>st.cfg[x.key]&&st.cfg[x.key].max>0);
+  if(!r)return 'Example: remaining 1, max 25, need 24.';
+  const c=st.cfg[r.key],need=Math.max(0,c.max-r.rem);
+  return 'Example: '+r.name+', remaining '+r.rem+', max '+c.max+', need '+need+', order '+calcNeed(r.rem,c)+'.';
+}
 function calcNeed(rem,c){
-  let n=Math.max(0,c.max-rem);const k=c.step||0;
-  if(k>0){const q=n/k;n=(st.opts.dir==='up'?Math.ceil(q):st.opts.dir==='near'?Math.round(q):Math.floor(q))*k}
+  let n=Math.max(0,c.max-rem);const e=eff(),k=c.step>0?c.step:e.mult;
+  if(k>0&&e.mode!=='exact'){const q=n/k;n=(e.mode==='max'?Math.ceil(q):Math.floor(q))*k}
   return n;
 }
 function rebuild(){document.querySelectorAll('#sb [data-o]').forEach(x=>{x.value=calcNeed(+x.dataset.rem,st.cfg[x.dataset.o])})}
@@ -1189,6 +1202,7 @@ async function loadStock(){
   try{const q=await userDoc().collection('loadcfg').get();q.docs.forEach(d=>{if(d.id==='_doors')st.doors=d.data().names;else if(d.id==='_opts')st.opts=d.data();else st.cfg[d.id]=d.data()})}catch(e){}
   if(!st.doors||st.doors.length!==8)st.doors=[1,2,3,4,5,6,7,8].map(i=>'Door '+i);
   try{const d=await stk().doc('night').get();st.night=d.exists?d.data():null}catch(e){}
+  try{const d=await stk().doc('morning').get();st.morn=d.exists?d.data():null}catch(e){}
   await cleanOrders();
   try{const q=await db.collection('ocrfix').get();q.docs.forEach(d=>st.fix[d.id]=d.data().to)}catch(e){}
   try{const q=await chkCol().orderBy('ts','desc').limit(5).get();st.chk=q.docs.map(d=>({id:d.id,...d.data()}))}catch(e){}
@@ -1211,12 +1225,27 @@ function drawStock(){
   $('stock').innerHTML=`<h2>Stock</h2><div class="pills">${[['order','Order'],['morning','Morning check'],['orders','Saved orders']].map(([v,t])=>`<button data-sv="${v}" class="${v===st.v?'on':''}">${t}</button>`).join('')}</div><div id="sb"></div>`;
   drawSB();
 }
+const whenTxt=t=>t?new Date(t).toLocaleString('en',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'';
+function mReady(){return{a:!!st.night,m:st.morn&&(!st.night||(st.morn.ts||'')>(st.night.ts||''))?st.morn:null}}
+function mCard(n,title,hint,data){
+  return `<div class="mcard${data?' ok':''}"><b>${n}. ${title}</b><div class="muted">${hint}</div>`+(data?`<div class="mok">&#10003; ${data.rows.length} products read<br><span class="muted">${whenTxt(data.ts)}</span></div>`:'<div class="muted" style="margin:6px 0 8px">Not uploaded yet</div>')+`<button data-up="${n}" class="${data?'alt':''}">${data?'Change screenshot '+n:'Choose screenshot '+n}</button></div>`;
+}
+function drawCards(){
+  const r=mReady();
+  $('sb').innerHTML=mCard(1,'Old stock (night remaining)','Taken after sales closed.',st.night)+mCard(2,'Current stock (morning)','Taken after loading is entered, including new products.',r.m)+(r.a&&r.m?'<button id="mres">Show result</button>':'')+'<div class="muted" id="sst"></div>';
+}
+function afterMorning(){
+  st.rows=null;st.mrows=null;const r=mReady();
+  if(r.a&&r.m){st.mrows=r.m.rows;st.oid=(st.chk[0]&&st.chk[0].id)||'';st.only=false;st.stage='cmp'}else st.stage='pick';
+  drawSB();
+}
 function drawSB(){
   const b=$('sb');
   if(st.v==='orders')return drawOrders();
   if(st.stage==='review')return drawReview();
   if(st.stage==='order')return drawOrder();
   if(st.stage==='cmp')return drawCompare();
+  if(st.v==='morning'&&st.stage==='pick')return drawCards();
   if(st.stage==='done'){b.innerHTML=st.html+'<button id="sagain" class="alt">Start again</button>';return}
   b.innerHTML=`<p class="muted">${st.v==='morning'?(st.mstep===2?'Screenshot 2 of 2: the morning stock after loading is entered (including any new products).':'Screenshot 1 of 2: the night remaining stock, taken after sales closed.'):NOTE[st.v]}</p><button id="sup">Choose screenshot</button><div class="muted" id="sst"></div>`;
 }
@@ -1226,7 +1255,7 @@ function drawOrder(){
   rows.forEach(r=>{const c=st.cfg[r.key],d=c.door===''||c.door==null?'No door':st.doors[c.door];
     if(d!==last){h+=`<h3>${esc(d)}</h3>`;last=d}
     h+=`<div class="row"><span>${esc(r.name)}<br><span class="muted">Remaining ${r.rem}, max ${c.max}${c.step?', round '+c.step:''}</span></span><input data-o="${r.key}" data-n="${esc(r.name)}" data-d="${d}" type="number" step="any" value="${calcNeed(r.rem,c)}" data-rem="${r.rem}" style="width:80px;margin:0"></div>`});
-  $('sb').innerHTML=`<p class="muted">Order = max load minus remaining. Change any quantity you want.${no?' '+no+' products have no max set (see Load setup).':''}</p>${h||'<p>No products have a max load yet. Set them in Load setup.</p>'}<p></p><button id="osave">Save order</button><button id="orb" class="alt">Rebuild automatically</button><button id="oshare" class="alt">Share on WhatsApp</button>`;
+  $('sb').innerHTML=`<label>Order type</label><select id="omode">${modeOpts(eff().mode)}</select><label>Round to multiples of (0 = none)</label><input id="omult" type="number" value="${eff().mult||''}" placeholder="for example 5"><p class="muted" id="oex">${exLine()}</p><p class="muted">Order = max load minus remaining. Change any quantity you want.${no?' '+no+' products have no max set (see Load setup).':''}</p>${h||'<p>No products have a max load yet. Set them in Load setup.</p>'}<p></p><button id="osave">Save order</button><button id="orb" class="alt">Rebuild automatically</button><button id="oshare" class="alt">Share on WhatsApp</button>`;
 }
 function compare(m){
   const nm={},od={};((st.night&&st.night.rows)||[]).forEach(r=>nm[r.key]=r);((st.order&&st.order.rows)||[]).forEach(r=>od[r.key]=r.qty);
@@ -1249,15 +1278,17 @@ $('stock').onclick=ev=>{
   if(t.id==='orb')rebuild();
   else if(t.dataset.sv){st.v=t.dataset.sv;st.stage='pick';st.rows=null;st.mstep=1;drawStock();return}
   if(t.id==='sup')pickShot();
+  else if(t.dataset.up){st.mstep=+t.dataset.up;pickShot()}
+  else if(t.id==='mres')afterMorning();
   else if(t.id==='sagain'){st.stage='pick';st.rows=null;st.mstep=1;drawSB()}
   else if(t.id==='cshare')shareCompare();
   else if(t.id==='sok'){
     if(!collectRows())return;
-    const d={date:ymd(new Date()),rows:st.rows};
-    if(st.v==='order'){stk().doc('evening').set(d).catch(()=>{});st.stage='order';drawSB()}
+    const d={date:ymd(new Date()),rows:st.rows,ts:new Date().toISOString()};
+    if(st.v==='order'){stk().doc('evening').set(d).catch(()=>{});st.ov=null;st.stage='order';drawSB()}
     else if(st.v==='night'){stk().doc('night').set(d).catch(e=>alert(e.message));st.night=d;st.html='<p>Night stock saved ('+d.rows.length+' products). Use Load setup to set max loads.</p>';st.stage='done';drawSB()}
-    else if(st.mstep===1){stk().doc('night').set(d).catch(()=>{});st.night=d;st.mstep=2;st.stage='pick';st.rows=null;drawSB()}
-    else{stk().doc('morning').set(d).catch(()=>{});st.mrows=d.rows;st.oid=(st.chk[0]&&st.chk[0].id)||'';st.only=false;st.stage='cmp';st.mstep=1;drawSB()}
+    else if(st.mstep===1){stk().doc('night').set(d).catch(()=>{});st.night=d;afterMorning()}
+    else{stk().doc('morning').set(d).catch(()=>{});st.morn=d;afterMorning()}
   }
   else if(t.id==='osave'||t.id==='oshare'){
     const rows=[...document.querySelectorAll('#sb [data-o]')].map(x=>({key:x.dataset.o,name:x.dataset.n,door:x.dataset.d,qty:parseFloat(x.value)||0}));
@@ -1268,7 +1299,8 @@ $('stock').onclick=ev=>{
 $('stock').onchange=ev=>{const i=ev.target.id;
   if(i==='sv'){st.v=ev.target.value;st.stage='pick';st.rows=null;st.mstep=1;drawSB()}
   else if(i==='ochk'){st.oid=ev.target.value;drawCompare()}
-  else if(i==='oonly'){st.only=ev.target.checked;drawCompare()}};
+  else if(i==='oonly'){st.only=ev.target.checked;drawCompare()}
+  else if(i==='omode'||i==='omult'){st.ov={mode:$('omode').value,mult:parseFloat($('omult').value)||0};rebuild();$('oex').textContent=exLine()}};
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>

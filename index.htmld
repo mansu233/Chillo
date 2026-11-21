@@ -879,7 +879,7 @@ function orderText(rows,date){
 function ordersHtml(l){
   st.ol=l;
   return (l.map(o=>{const tot=o.rows.reduce((a,r)=>a+r.qty,0);
-    return `<div class="row" style="align-items:flex-start"><input type="checkbox" data-sel="${o.id}" style="margin-top:4px"><details style="flex:1"><summary>${esc(o.date)}, ${o.rows.length} products, ${tot} cartons</summary><pre style="white-space:pre-wrap;font:inherit;margin:8px 0">${esc(orderText(o.rows,o.date))}</pre></details><a data-sh="${o.id}">Share</a></div>`}).join('')||'<p class="muted">No saved orders.</p>')+
+    return `<div class="row" style="align-items:flex-start"><input type="checkbox" data-sel="${o.id}" style="margin-top:4px"><details style="flex:1"><summary>${esc(o.date)}, ${o.rows.filter(r=>r.qty>0).length} products, ${tot} cartons</summary><pre style="white-space:pre-wrap;font:inherit;margin:8px 0">${esc(orderText(o.rows,o.date))}</pre></details><a data-sh="${o.id}">Share</a></div>`}).join('')||'<p class="muted">No saved orders.</p>')+
     (l.length?'<p></p><button id="odel" class="alt">Delete ticked orders</button>':'');
 }
 async function drawOrders(){
@@ -1059,7 +1059,7 @@ async function loadRoute(){
   try{const d=await userDoc().collection('routeorder').doc(routeKey()).get();rt.ids=d.exists?d.data().ids:null}catch(e){}
   if(rt.ids)applySaved();
 }
-const VER='v1.28';
+const VER='v1.29';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={
@@ -1091,7 +1091,7 @@ function calcNeed(rem,c){
   if(k>0&&e.mode!=='exact'){const q=n/k;n=(e.mode==='max'?Math.ceil(q):Math.floor(q))*k}
   return n;
 }
-function rebuild(){document.querySelectorAll('#sb [data-o]').forEach(x=>{x.value=calcNeed(+x.dataset.rem,st.cfg[x.dataset.o])})}
+function rebuild(){document.querySelectorAll('#sb [data-o]').forEach(x=>{const c=st.cfg[x.dataset.o];if(c&&c.max>0)x.value=calcNeed(+x.dataset.rem,c)});applyZero()}
 async function cleanOrders(){
   const h=st.opts.hrs;if(!(h>0))return;
   try{
@@ -1250,12 +1250,21 @@ function drawSB(){
   b.innerHTML=`<p class="muted">${st.v==='morning'?(st.mstep===2?'Screenshot 2 of 2: the morning stock after loading is entered (including any new products).':'Screenshot 1 of 2: the night remaining stock, taken after sales closed.'):NOTE[st.v]}</p><button id="sup">Choose screenshot</button><div class="muted" id="sst"></div>`;
 }
 function drawOrder(){
-  const rows=st.rows.filter(r=>st.cfg[r.key]&&st.cfg[r.key].max>0),no=st.rows.length-rows.length;
-  rows.sort((a,b)=>(st.cfg[a.key].door??9)-(st.cfg[b.key].door??9));let last='',h='';
+  const has=r=>st.cfg[r.key]&&st.cfg[r.key].max>0,rows=st.rows.filter(has),rest=st.rows.filter(r=>!has(r)).sort((a,b)=>a.name.localeCompare(b.name));
+  rows.sort((a,b)=>(st.cfg[a.key].door??9)-(st.cfg[b.key].door??9));
+  let last=null,h='';
+  const grp=t=>{if(last!==null)h+='</div>';h+=`<div class="og"><h3>${esc(t)}</h3>`;last=t};
   rows.forEach(r=>{const c=st.cfg[r.key],d=c.door===''||c.door==null?'No door':st.doors[c.door];
-    if(d!==last){h+=`<h3>${esc(d)}</h3>`;last=d}
-    h+=`<div class="row"><span>${esc(r.name)}<br><span class="muted">Remaining ${r.rem}, max ${c.max}${c.step?', round '+c.step:''}</span></span><input data-o="${r.key}" data-n="${esc(r.name)}" data-d="${d}" type="number" step="any" value="${calcNeed(r.rem,c)}" data-rem="${r.rem}" style="width:80px;margin:0"></div>`});
-  $('sb').innerHTML=`<label>Order type</label><select id="omode">${modeOpts(eff().mode)}</select><label>Round to multiples of (0 = none)</label><input id="omult" type="number" value="${eff().mult||''}" placeholder="for example 5"><p class="muted" id="oex">${exLine()}</p><p class="muted">Order = max load minus remaining. Change any quantity you want.${no?' '+no+' products have no max set (see Load setup).':''}</p>${h||'<p>No products have a max load yet. Set them in Load setup.</p>'}<p></p><button id="osave">Save order</button><button id="orb" class="alt">Rebuild automatically</button><button id="oshare" class="alt">Share on WhatsApp</button>`;
+    if(d!==last)grp(d);
+    h+=`<div class="row orow"><span>${esc(r.name)}<br><span class="muted">Remaining ${r.rem}, max ${c.max}${c.step?', round '+c.step:''}</span></span><input data-o="${r.key}" data-n="${esc(r.name)}" data-d="${esc(d)}" type="number" step="any" value="${calcNeed(r.rem,c)}" data-rem="${r.rem}" style="width:80px;margin:0"></div>`});
+  if(rest.length){grp('No max set');rest.forEach(r=>{h+=`<div class="row orow"><span>${esc(r.name)}<br><span class="muted">Remaining ${r.rem}, no max set</span></span><input data-o="${r.key}" data-n="${esc(r.name)}" data-d="No max set" type="number" step="any" value="0" data-rem="${r.rem}" style="width:80px;margin:0"></div>`})}
+  if(last!==null)h+='</div>';
+  $('sb').innerHTML=`<label>Order type</label><select id="omode">${modeOpts(eff().mode)}</select><label>Round to multiples of (0 = none)</label><input id="omult" type="number" value="${eff().mult||''}" placeholder="for example 5"><p class="muted" id="oex">${exLine()}</p><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ozero" ${st.hz?'checked':''}> Hide products with zero quantity</label><p class="muted">Order = max load minus remaining. Change any quantity you want.${rest.length?' '+rest.length+' products have no max set. They are listed at the bottom with quantity 0, and you can type a quantity or set their max in Load setup.':''}</p>${h||'<p>No products were found in the screenshot.</p>'}<p></p><button id="osave">Save order</button><button id="orb" class="alt">Rebuild automatically</button><button id="oshare" class="alt">Share on WhatsApp</button>`;
+  applyZero();
+}
+function applyZero(){
+  const hz=st.hz;document.querySelectorAll('#sb .orow').forEach(r=>{const v=parseFloat(r.querySelector('[data-o]').value)||0;r.classList.toggle('hidden',!!hz&&v===0)});
+  document.querySelectorAll('#sb .og').forEach(g=>g.classList.toggle('hidden',!g.querySelector('.orow:not(.hidden)')));
 }
 function compare(m){
   const nm={},od={};((st.night&&st.night.rows)||[]).forEach(r=>nm[r.key]=r);((st.order&&st.order.rows)||[]).forEach(r=>od[r.key]=r.qty);
@@ -1300,6 +1309,7 @@ $('stock').onchange=ev=>{const i=ev.target.id;
   if(i==='sv'){st.v=ev.target.value;st.stage='pick';st.rows=null;st.mstep=1;drawSB()}
   else if(i==='ochk'){st.oid=ev.target.value;drawCompare()}
   else if(i==='oonly'){st.only=ev.target.checked;drawCompare()}
+  else if(i==='ozero'){st.hz=ev.target.checked;applyZero()}
   else if(i==='omode'||i==='omult'){st.ov={mode:$('omode').value,mult:parseFloat($('omult').value)||0};rebuild();$('oex').textContent=exLine()}};
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');

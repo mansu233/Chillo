@@ -40,7 +40,7 @@ button{background:var(--navy);color:#fff;border:0;font-weight:600;font-size:.8re
 button:active{opacity:.85}
 button.alt{background:transparent;color:var(--hl);border:1.5px solid var(--hl)}
 button.sm,.sm{width:auto;min-width:130px;display:inline-block;padding:10px 22px;margin:6px 0 4px}
-#cdel,#pdel,#odel,#rclr{color:var(--bad);border-color:#E9B4AD}
+#cdel,#pdel,#odel,#rclr,#creset{color:var(--bad);border-color:#E9B4AD}
 label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--hl)}
 .big{font-size:2.6rem;font-weight:800;margin:2px 0 10px;color:var(--hl)}
 .row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
@@ -909,18 +909,20 @@ function ordActions(t,ouid,after){
 function drawSetup(){
   if(st.doors.length!==8){$('lsetup').innerHTML='<p class="muted">Loading...</p>';return}
   const src=knownList().sort((a,b)=>a.name.localeCompare(b.name));
-  $('lsetup').innerHTML=`<h2>Load setup</h2><p class="muted">Set your vehicle's door names, then each product's maximum load and door.</p><h3>Order rounding and cleanup</h3><label>Order type (default)</label><select id="smode">${modeOpts(omode())}</select><label>Round to multiples of (all products, 0 = none)</label><input id="smult" type="number" value="${st.opts.mult||''}" placeholder="for example 5"><p class="muted">A product's own Round box overrides this multiple.</p><label>Delete saved orders after (hours, 0 = never)</label><input id="ohr" type="number" value="${st.opts.hrs}"><h3>Door names</h3>`+
+  $('lsetup').innerHTML=`<h2>Load setup</h2><p class="muted">Set your vehicle's door names, then each product's maximum load and door. Stock adjust (+ or -) is added to the quantity read from every screenshot until you tap Clear. Use it when the company app shows a wrong stock.</p><h3>Order rounding and cleanup</h3><label>Order type (default)</label><select id="smode">${modeOpts(omode())}</select><label>Round to multiples of (all products, 0 = none)</label><input id="smult" type="number" value="${st.opts.mult||''}" placeholder="for example 5"><p class="muted">A product's own Round box overrides this multiple.</p><label>Delete saved orders after (hours, 0 = never)</label><input id="ohr" type="number" value="${st.opts.hrs}"><h3>Door names</h3>`+
    st.doors.map((d,i)=>`<input data-dn="${i}" value="${esc(d)}">`).join('')+`<h3>Products</h3>`+
-   (src.length?src.map(r=>{const c=st.cfg[r.key]||{};return `<div class="row"><span>${esc(r.name)}</span><span style="display:flex;gap:6px"><input data-k="${r.key}" data-f="max" type="number" placeholder="Max" value="${c.max||''}" style="width:64px;margin:0;padding:6px"><input data-k="${r.key}" data-f="step" type="number" placeholder="Round" value="${c.step||''}" style="width:64px;margin:0;padding:6px"><select data-k="${r.key}" data-f="door" style="width:96px;margin:0;padding:6px"><option value="">Door</option>${st.doors.map((d,i)=>`<option value="${i}" ${c.door===i?'selected':''}>${esc(d)}</option>`).join('')}</select></span></div>`}).join(''):'<p class="muted">No products yet. Add products, or upload a night stock screenshot first.</p>')+
+   (src.length?src.map(r=>{const c=st.cfg[r.key]||{};return `<div class="row"><span>${esc(r.name)}<br><span class="muted">Stock adjust</span> <input data-k="${r.key}" data-f="adj" type="number" placeholder="+/-" value="${c.adj||''}" style="width:70px;display:inline-block;margin:4px 6px 0 0;padding:4px 6px">${c.adj?'<a data-ca="'+r.key+'">Clear</a>':''}</span><span style="display:flex;gap:6px"><input data-k="${r.key}" data-f="max" type="number" placeholder="Max" value="${c.max||''}" style="width:64px;margin:0;padding:6px"><input data-k="${r.key}" data-f="step" type="number" placeholder="Round" value="${c.step||''}" style="width:64px;margin:0;padding:6px"><select data-k="${r.key}" data-f="door" style="width:96px;margin:0;padding:6px"><option value="">Door</option>${st.doors.map((d,i)=>`<option value="${i}" ${c.door===i?'selected':''}>${esc(d)}</option>`).join('')}</select></span></div>`}).join(''):'<p class="muted">No products yet. Add products, or upload a night stock screenshot first.</p>')+
    `<p></p><button id="cfsave">Save setup</button><div class="muted" id="cfm"></div>`;
 }
 $('lsetup').onclick=ev=>{
+  const ca=ev.target.dataset.ca;
+  if(ca){const i=document.querySelector(`#lsetup [data-k="${ca}"][data-f=adj]`);if(i)i.value='';if(st.cfg[ca])st.cfg[ca].adj=0;userDoc().collection('loadcfg').doc(ca).update({adj:0}).catch(()=>{});ev.target.remove();return}
   if(ev.target.id!=='cfsave')return;
   const b=db.batch(),cl=userDoc().collection('loadcfg');
   st.doors=[...document.querySelectorAll('#lsetup [data-dn]')].map(x=>x.value.trim()||'Door');b.set(cl.doc('_doors'),{names:st.doors});st.opts={mode:$('smode').value,dir:$('smode').value==='max'?'up':'down',mult:parseFloat($('smult').value)||0,hrs:parseFloat($('ohr').value)||0};b.set(cl.doc('_opts'),st.opts);
   knownList().forEach(r=>{
     const mx=document.querySelector(`#lsetup [data-k="${r.key}"][data-f=max]`),dr=document.querySelector(`#lsetup [data-k="${r.key}"][data-f=door]`);if(!mx)return;
-    const c={name:r.name,max:parseFloat(mx.value)||0,step:parseFloat(document.querySelector(`#lsetup [data-k="${r.key}"][data-f=step]`).value)||0,door:dr.value===''?null:+dr.value};st.cfg[r.key]=c;b.set(cl.doc(r.key),c);
+    const c={name:r.name,max:parseFloat(mx.value)||0,step:parseFloat(document.querySelector(`#lsetup [data-k="${r.key}"][data-f=step]`).value)||0,adj:parseFloat((document.querySelector(`#lsetup [data-k="${r.key}"][data-f=adj]`)||{}).value)||0,door:dr.value===''?null:+dr.value};st.cfg[r.key]=c;b.set(cl.doc(r.key),c);
   });
   b.commit().then(()=>$('cfm').textContent='Saved.').catch(e=>$('cfm').textContent=e.message);
 };
@@ -1068,7 +1070,9 @@ async function loadRoute(){
 }
 let bcShow=false,pbarPre='';try{bcShow=localStorage.getItem('chillo_bc')==='1'}catch(e){}
 try{$('bcs').value=bcShow?'1':'0';$('bcs').onchange=e=>{bcShow=e.target.value==='1';localStorage.setItem('chillo_bc',e.target.value);if(pedit===null)try{drawList()}catch(x){}}}catch(e){}
-const VER='v1.30';
+const adjTag=r=>r.adj?' (adjusted '+(r.adj>0?'+':'')+r.adj+')':'';
+function applyAdj(r){const a=(st.cfg[r.key]||{}).adj||0;if(a&&!r.adj){r.adj=a;r.rem=Math.max(0,r3(r.rem+a));r.orig=Math.max(0,r3(r.orig+a))}return r}
+const VER='v1.32';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={
@@ -1158,46 +1162,69 @@ function cnt(){
   const od=$('ccoinold');if(od)ct+=parseFloat(od.dataset.v)||0;const ce=$('ccoins');if(ce)ce.textContent=money(ct);t+=ct;return r3(t);
 }
 function upCount(){
-  const c=cnt(),d=r3(c-cl.exp),e=$('cdif');$('ctot').textContent=money(c);
+  const bank=cl.closed?(cl.day.bank||0):(parseFloat($('cbank')&&$('cbank').value)||0);
+  if(!cl.closed)cl.exp=r3(cl.base-bank);
+  const c=cnt(),d=r3(c-cl.exp),e=$('cdif');$('ctot').textContent=money(c);if($('cexp'))$('cexp').textContent=money(cl.exp)+' SAR';
   e.textContent=d===0?'OK':d>0?'Over +'+money(d):'Short '+money(d);e.style.color=d===0?'#1E8E4E':'#C0392B';
+  saveDraft();
 }
+const dKey=()=>'chillo_draft_'+uid+'_'+cl.date;
+function saveDraft(){
+  if(cl.closed)return;
+  try{
+    const dn={};document.querySelectorAll('#close [data-dn]').forEach(x=>{if(x.value)dn[x.dataset.dn]=x.value});
+    const co=[...document.querySelectorAll('#close .crow')].map(r=>({v:r.querySelector('[data-cv]').value,n:r.querySelector('[data-cn]').value}));
+    localStorage.setItem(dKey(),JSON.stringify({dn,co,bank:$('cbank')?$('cbank').value:''}));
+  }catch(e){}
+}
+function restoreDraft(){
+  if(cl.closed)return;
+  try{
+    const d=JSON.parse(localStorage.getItem(dKey())||'null');if(!d)return;
+    document.querySelectorAll('#close [data-dn]').forEach(x=>{x.value=(d.dn&&d.dn[x.dataset.dn])||''});
+    if(d.co&&d.co.length)$('coinrows').innerHTML=d.co.map(r=>coinRowHtml(r.v,r.n)).join('');
+    if($('cbank'))$('cbank').value=d.bank||'';
+  }catch(e){}
+}
+function clearDraft(){try{localStorage.removeItem(dKey())}catch(e){}}
 async function drawClose(){
   const d=cl.date||(cl.date=ymd(new Date()));$('close').innerHTML='<p class="muted">Loading...</p>';
   let tot=0,day={};
   try{const q=await sales().where('date','==',d).get();q.docs.forEach(x=>tot+=x.data().amount)}catch(e){}
   try{const x=await dayRef(d).get();day=x.exists?x.data():{}}catch(e){}
-  const cr=day.credit||0,py=day.pay||0,closed=!!day.closed,exp=closed&&day.expected!=null?day.expected:r3(tot-cr+py);
-  Object.assign(cl,{tot,cr,py,exp,closed,day});
+  const cr=day.credit||0,py=day.pay||0,closed=!!day.closed,base=r3(tot-cr+py),exp=closed&&day.expected!=null?day.expected:base;
+  Object.assign(cl,{tot,cr,py,exp,closed,day,base});
   const nt=day.notes||{},ln=(a,b)=>`<div class="row"><span>${a}</span><b>${b}</b></div>`;
   $('close').innerHTML=`<label>Date</label><input type="date" id="cdate" value="${d}"><h3>${closed?'Closed day':'Open day'}</h3>`+
    ln('Sales total',money(closed&&day.sales!=null?day.sales:tot)+' SAR')+ln('Credit given (not in sales)','- '+money(cr))+ln('Payments received','+ '+money(py))+
-   `<div class="row"><b>Expected cash</b><b>${money(exp)} SAR</b></div><p class="muted">Credit you give is your own risk, so it is taken off the cash you should have. Payments you collect from customers are added.</p><h3>Cash count</h3>`+
+   `<div class="row"><span>Received by bank (SAR)</span><input id="cbank" type="number" inputmode="decimal" value="${closed?(day.bank||''):''}" ${closed?'disabled':''} style="width:110px;margin:0;padding:6px"></div><div class="row"><b>Expected cash</b><b id="cexp">${money(exp)} SAR</b></div><p class="muted">Credit you give and money received by bank are taken off the cash you should have. Payments you collect from customers are added.</p><h3>Cash count</h3>`+
    DEN.map(n=>`<div class="row"><span>${n} x</span><input data-dn="${n}" type="number" inputmode="numeric" min="0" value="${closed?(nt[n]||''):''}" ${closed?'disabled':''} style="width:90px;margin:0;padding:6px"><b data-sub="${n}">0</b></div>`).join('')+
    `<h3>Coins</h3><div id="coinrows">${closed?(nt.coinRows||[]).map(r=>coinRowHtml(r.v,r.n,true)).join(''):coinRowHtml(1,'')}</div>`+(closed?(!nt.coinRows&&nt.coins?`<div class="row"><span>Coins (older entry)</span><b id="ccoinold" data-v="${nt.coins}">${money(nt.coins)}</b></div>`:''):'<button id="cadd" class="alt">+ Add coin row</button>')+`<div class="row"><b>Coins total</b><b id="ccoins">0</b></div>`+
    `<div class="row"><b>Counted</b><b id="ctot">0</b></div><div class="row"><b>Difference</b><b id="cdif"></b></div><p></p>`+
-   (closed?(me.role==='admin'?'<button id="creopen" class="alt">Reopen this day</button>':'<p class="muted">This day is closed. Only the admin can reopen it.</p>'):'<button id="cclose">Close day</button>')+
+   (closed?(me.role==='admin'?'<button id="creopen" class="alt">Reopen this day</button>':'<p class="muted">This day is closed. Only the admin can reopen it.</p>'):'<button id="cclose">Close day</button><button id="creset" class="alt">Reset count</button>')+
    '<button id="cshare2" class="alt">Share report</button>';
-  upCount();
+  restoreDraft();upCount();
 }
 function closeText(){
-  const c=cnt(),d=r3(c-cl.exp),nt=[];document.querySelectorAll('#close [data-dn]').forEach(x=>{if(x.value)nt.push(x.dataset.dn+' x '+x.value)});
+  if(!cl.closed)upCount();const bk=cl.closed?(cl.day.bank||0):(parseFloat($('cbank').value)||0),c=cnt(),d=r3(c-cl.exp),nt=[];document.querySelectorAll('#close [data-dn]').forEach(x=>{if(x.value)nt.push(x.dataset.dn+' x '+x.value)});
   coinRowsData().forEach(r=>nt.push(r.n+' x '+coinLbl(r.v)));
-  return 'Closing report '+cl.date+(me.name?' - '+me.name:'')+'\nSales: '+money(cl.closed&&cl.day.sales!=null?cl.day.sales:cl.tot)+'\nCredit given (not in sales): -'+money(cl.cr)+'\nPayments received: +'+money(cl.py)+'\nExpected cash: '+money(cl.exp)+'\nCounted cash: '+money(c)+'\nDifference: '+(d===0?'OK':(d>0?'Over +':'Short ')+money(d))+(nt.length?'\nNotes: '+nt.join(', '):'');
+  return 'Closing report '+cl.date+(me.name?' - '+me.name:'')+'\nSales: '+money(cl.closed&&cl.day.sales!=null?cl.day.sales:cl.tot)+'\nCredit given (not in sales): -'+money(cl.cr)+'\nPayments received: +'+money(cl.py)+(bk>0?'\nReceived by bank: -'+money(bk):'')+'\nExpected cash: '+money(cl.exp)+'\nCounted cash: '+money(c)+'\nDifference: '+(d===0?'OK':(d>0?'Over +':'Short ')+money(d))+(nt.length?'\nNotes: '+nt.join(', '):'');
 }
-$('close').oninput=e=>{if(e.target.dataset.dn||e.target.dataset.cn!==undefined)upCount()};
+$('close').oninput=e=>{if(e.target.dataset.dn||e.target.dataset.cn!==undefined||e.target.id==='cbank')upCount()};
 $('close').onchange=e=>{if(e.target.id==='cdate'){cl.date=e.target.value;drawClose()}else if(e.target.dataset.cv!==undefined)upCount()};
 $('close').onclick=async e=>{
   const t=e.target;
   if(t.id==='cadd'){addCoin();return}
   if(t.dataset.cx!==undefined){delCoin(t);return}
   if(t.id==='cclose'){
-    const c=cnt(),dif=r3(c-cl.exp);
+    upCount();const c=cnt(),dif=r3(c-cl.exp);
     if(!confirm('Close '+cl.date+'?\nExpected '+money(cl.exp)+', counted '+money(c)+', difference '+money(dif)+'.\nSales for this day are locked after closing.'))return;
     const notes={};document.querySelectorAll('#close [data-dn]').forEach(x=>{if(x.value)notes[x.dataset.dn]=parseFloat(x.value)||0});const cr2=coinRowsData();if(cr2.length){notes.coinRows=cr2;notes.coins=r3(cr2.reduce((a,r)=>a+r.n*r.v,0))}
-    try{await dayRef(cl.date).set({uid,date:cl.date,closed:true,closedAt:stamp(),sales:cl.tot,credit:cl.cr,pay:cl.py,expected:cl.exp,counted:c,diff:dif,notes},{merge:true});closedSet.add(cl.date);drawClose()}
+    try{await dayRef(cl.date).set({uid,date:cl.date,closed:true,closedAt:stamp(),sales:cl.tot,credit:cl.cr,pay:cl.py,expected:cl.exp,bank:parseFloat($('cbank').value)||0,counted:c,diff:dif,notes},{merge:true});closedSet.add(cl.date);clearDraft();drawClose()}
     catch(x){alert('Could not close: '+x.message)}
   }
   else if(t.id==='creopen'){if(confirm('Reopen this day?'))try{await dayRef(cl.date).update({closed:false,reopenedAt:stamp()});closedSet.delete(cl.date);drawClose()}catch(x){alert(x.message)}}
+  else if(t.id==='creset'){if(confirm('Clear all counted notes, coins and the bank amount?')){clearDraft();drawClose()}}
   else if(t.id==='cshare2')shareText(closeText());
 };
 async function showMemberDays(){
@@ -1265,8 +1292,8 @@ function drawOrder(){
   const grp=t=>{if(last!==null)h+='</div>';h+=`<div class="og"><h3>${esc(t)}</h3>`;last=t};
   rows.forEach(r=>{const c=st.cfg[r.key],d=c.door===''||c.door==null?'No door':st.doors[c.door];
     if(d!==last)grp(d);
-    h+=`<div class="row orow"><span>${esc(r.name)}<br><span class="muted">Remaining ${r.rem}, max ${c.max}${c.step?', round '+c.step:''}</span></span><input data-o="${r.key}" data-n="${esc(r.name)}" data-d="${esc(d)}" type="number" step="any" value="${calcNeed(r.rem,c)}" data-rem="${r.rem}" style="width:80px;margin:0"></div>`});
-  if(rest.length){grp('No max set');rest.forEach(r=>{h+=`<div class="row orow"><span>${esc(r.name)}<br><span class="muted">Remaining ${r.rem}, no max set</span></span><input data-o="${r.key}" data-n="${esc(r.name)}" data-d="No max set" type="number" step="any" value="0" data-rem="${r.rem}" style="width:80px;margin:0"></div>`})}
+    h+=`<div class="row orow"><span>${esc(r.name)}<br><span class="muted">Remaining ${r.rem}${adjTag(r)}, max ${c.max}${c.step?', round '+c.step:''}</span></span><input data-o="${r.key}" data-n="${esc(r.name)}" data-d="${esc(d)}" type="number" step="any" value="${calcNeed(r.rem,c)}" data-rem="${r.rem}" style="width:80px;margin:0"></div>`});
+  if(rest.length){grp('No max set');rest.forEach(r=>{h+=`<div class="row orow"><span>${esc(r.name)}<br><span class="muted">Remaining ${r.rem}${adjTag(r)}, no max set</span></span><input data-o="${r.key}" data-n="${esc(r.name)}" data-d="No max set" type="number" step="any" value="0" data-rem="${r.rem}" style="width:80px;margin:0"></div>`})}
   if(last!==null)h+='</div>';
   $('sb').innerHTML=`<label>Order type</label><select id="omode">${modeOpts(eff().mode)}</select><label>Round to multiples of (0 = none)</label><input id="omult" type="number" value="${eff().mult||''}" placeholder="for example 5"><p class="muted" id="oex">${exLine()}</p><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ozero" ${st.hz?'checked':''}> Hide products with zero quantity</label><p class="muted">Order = max load minus remaining. Change any quantity you want.${rest.length?' '+rest.length+' products have no max set. They are listed at the bottom with quantity 0, and you can type a quantity or set their max in Load setup.':''}</p>${h||'<p>No products were found in the screenshot.</p>'}<p></p><button id="osave">Save order</button><button id="orb" class="alt">Rebuild automatically</button><button id="oshare" class="alt">Share on WhatsApp</button>`;
   applyZero();
@@ -1302,6 +1329,7 @@ $('stock').onclick=ev=>{
   else if(t.id==='cshare')shareCompare();
   else if(t.id==='sok'){
     if(!collectRows())return;
+    st.rows.forEach(applyAdj);
     const d={date:ymd(new Date()),rows:st.rows,ts:new Date().toISOString()};
     if(st.v==='order'){stk().doc('evening').set(d).catch(()=>{});st.ov=null;st.stage='order';drawSB()}
     else if(st.v==='night'){stk().doc('night').set(d).catch(e=>alert(e.message));st.night=d;st.html='<p>Night stock saved ('+d.rows.length+' products). Use Load setup to set max loads.</p>';st.stage='done';drawSB()}

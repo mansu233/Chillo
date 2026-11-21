@@ -110,6 +110,7 @@ nav{display:none}
 <input id="na" placeholder="New area, for example Jeddah"><button id="aa" class="alt">Add area</button></div>
 <label>New 6-digit password</label><input id="np" type="password" inputmode="numeric" maxlength="6">
 <div class="err" id="pmsg"></div><button id="cp" class="alt">Change password</button>
+<label>Show barcode numbers</label><select id="bcs"><option value="0">Hide (default)</option><option value="1">Show</option></select>
 <label>Text size</label><select id="fsz"><option value="0.9">Small</option><option value="1">Normal</option><option value="1.12">Large</option><option value="1.25">Extra large</option></select>
 <p class="muted">Chillo <span class="ver"></span></p><button id="out2">Sign out</button></section>
 </main>
@@ -349,8 +350,8 @@ function watchProducts(){
 }
 function drawList(){
   const price=can('prod.price'),admin=me.role==='admin',q=pq.toLowerCase();
-  const list=prods.filter(p=>(!pcat||p.category===pcat)&&(!q||((p.name||'')+' '+(p.pack||'')+' '+(p.category||'')).toLowerCase().includes(q)));
-  $('plist').innerHTML=`<div class="muted">${list.length} products</div>`+list.map(p=>`<div class="row"><i class="dot"></i><span style="flex:1">${esc(p.name)}${p.isNew?' <b style="color:#E67E22;font-size:.75rem">NEW</b>':''}<br><span class="muted">${[p.pack,p.category,price?(p.price!=null?money(p.price)+' SAR / carton':'No price yet'):''].filter(Boolean).map(esc).join(', ')}</span></span>
+  const list=prods.filter(p=>(!pcat||p.category===pcat)&&(!q||((p.name||'')+' '+(p.pack||'')+' '+(p.category||'')+' '+(p.barcode||'')).toLowerCase().includes(q)));
+  $('plist').innerHTML=`<div class="muted">${list.length} products</div>`+(!list.length&&/^\d{6,}$/.test(q)?'<p class="muted">No product has this barcode.</p>'+(admin?'<button id="pnewbar" class="alt">Add product with this barcode</button>':''):'')+list.map(p=>`<div class="row"><i class="dot"></i><span style="flex:1">${esc(p.name)}${p.isNew?' <b style="color:#E67E22;font-size:.75rem">NEW</b>':''}<br><span class="muted">${[p.pack,p.category,price?(p.price!=null?money(p.price)+' SAR / carton':'No price yet'):'',bcShow&&p.barcode?'Barcode '+p.barcode:''].filter(Boolean).map(esc).join(', ')}</span></span>
    <span>${admin?'<a data-pe="'+esc(p.id)+'">Edit</a><a data-pd="'+esc(p.id)+'">Delete</a>':''}</span></div>`).join('');
 }
 function drawProds(){
@@ -361,11 +362,12 @@ function drawProds(){
     <label>Name</label><input id="pname" value="${esc(p.name)}">
     <label>Pack</label><input id="ppack" value="${esc(p.pack)}" placeholder="for example 1*30*60 GM">
     <label>Category</label><input id="pcat" list="cl" value="${esc(p.category)}"><datalist id="cl">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+    <label>Barcode (type it, or scan)</label><input id="pbar" inputmode="numeric" value="${esc(p.barcode||(pedit?'':pbarPre))}"><button id="pscan" class="alt">Scan barcode with camera</button>
     <label>Price per carton (SAR)</label><input id="pprice" type="number" inputmode="decimal" value="${p.price==null?'':p.price}">
     <div class="err" id="pmsg2"></div><button id="psave">Save</button><button id="pcancel" class="alt">Cancel</button>${pedit?'<button id="pdel" class="alt">Delete product</button>':''}`;
     return;
   }
-  $('prod').innerHTML=`<h2>Products</h2>${pendHtml()}<input id="pq" placeholder="Search by name" value="${esc(pq)}">
+  $('prod').innerHTML=`<h2>Products</h2>${pendHtml()}<input id="pq" placeholder="Search by name or barcode" value="${esc(pq)}"><button id="pfind" class="alt">Scan barcode to find a product</button>
   <select id="pc"><option value="">All categories</option>${cats.map(c=>`<option ${c===pcat?'selected':''}>${esc(c)}</option>`).join('')}</select>`+
   (admin?`<button id="padd">Add product</button><button id="pimp" class="alt">Import from Excel</button><button id="ptpl" class="alt">Download Excel template</button><input id="pfile" type="file" accept=".xlsx,.xls,.csv" class="hidden"><div class="err" id="pmsg2"></div>`:'')+`<div id="plist"></div>`;
   drawList();
@@ -380,7 +382,7 @@ async function importFile(f){
       const code=String(k.code||'').trim(),name=String(k.name||'').trim();
       if(!code||!name){skip++;continue}
       const pr=parseFloat(k.price!==undefined?k.price:k['price per carton']);
-      batch.set(db.collection('products').doc(idOf(code)),{code,name,pack:String(k.pack||'').trim(),unit:String(k.unit||'Carton').trim(),category:String(k.category||'').trim(),price:isNaN(pr)?null:pr},{merge:true});
+      batch.set(db.collection('products').doc(idOf(code)),{code,name,pack:String(k.pack||'').trim(),unit:String(k.unit||'Carton').trim(),category:String(k.category||'').trim(),price:isNaN(pr)?null:pr,...(String(k.barcode||'').trim()?{barcode:String(k.barcode).trim()}:{})},{merge:true});
       ok++;n++;
       if(n===400){await batch.commit();batch=db.batch();n=0}
     }
@@ -389,13 +391,16 @@ async function importFile(f){
   }catch(e){msg.textContent='Import failed: '+e.message}
 }
 function template(){
-  const ws=XLSX.utils.aoa_to_sheet([['Code','Name','Pack','Unit','Category','Price per carton'],['FG-ICE-0001','Example Vanilla Cups','1*30*40 GM','Carton','Cups',50]]);
+  const ws=XLSX.utils.aoa_to_sheet([['Code','Name','Pack','Unit','Category','Price per carton','Barcode'],['FG-ICE-0001','Example Vanilla Cups','1*30*40 GM','Carton','Cups',50,'6281000000000']]);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Products');XLSX.writeFile(wb,'chillo-products-template.xlsx');
 }
 $('prod').onclick=ev=>{
   const t=ev.target;
   if(t.dataset.ap||t.dataset.rj){const r=reqs.find(x=>x.id===(t.dataset.ap||t.dataset.rj));if(r){if(t.dataset.ap&&!prods.some(p=>p.id===idOf(r.code)))db.collection('products').doc(idOf(r.code)).set({code:r.code,name:r.name,pack:r.pack||'',unit:r.unit||'Carton',category:'',price:null},{merge:true}).catch(e=>alert(e.message));db.collection('productRequests').doc(r.id).delete().catch(()=>{})}}
-  else if(t.id==='padd'){pedit='';drawProds()}
+  else if(t.id==='pfind')scanBarcode(v=>{pq=String(v).trim();$('pq').value=pq;drawList()})
+  else if(t.id==='pnewbar'){pbarPre=pq;pedit='';drawProds()}
+  else if(t.id==='pscan')scanBarcode(v=>{$('pbar').value=String(v).trim()})
+  else if(t.id==='padd'){pbarPre='';pedit='';drawProds()}
   else if(t.dataset.pe){pedit=t.dataset.pe;drawProds()}
   else if(t.id==='pcancel'){pedit=null;drawProds()}
   else if(t.dataset.pd){if(confirm('Delete this product?'))db.collection('products').doc(t.dataset.pd).delete().catch(e=>alert(e.message))}
@@ -405,7 +410,9 @@ $('prod').onclick=ev=>{
     const old=prods.find(x=>x.id===pedit),code=old?old.code:'NEW-'+Date.now().toString(36).toUpperCase(),name=$('pname').value.trim(),pr=parseFloat($('pprice').value);
     if(!name){$('pmsg2').textContent='Enter the product name.';return}
     if(!old&&prods.some(x=>(x.name||'').trim().toLowerCase()===name.toLowerCase())){$('pmsg2').textContent='A product with this name already exists.';return}
-    db.collection('products').doc(old?old.id:idOf(code)).set({code,name,pack:$('ppack').value.trim(),unit:'Carton',category:$('pcat').value.trim(),price:isNaN(pr)?null:pr,isNew:false},{merge:true}).catch(e=>alert(e.message));
+    const bar=$('pbar').value.replace(/\s+/g,''),dup=bar&&prods.find(x=>x.barcode===bar&&x.id!==(old&&old.id));
+    if(dup){$('pmsg2').textContent='This barcode already belongs to '+dup.name+'.';return}
+    db.collection('products').doc(old?old.id:idOf(code)).set({code,name,pack:$('ppack').value.trim(),unit:'Carton',category:$('pcat').value.trim(),price:isNaN(pr)?null:pr,barcode:bar,isNew:false},{merge:true}).catch(e=>alert(e.message));
     pedit=null;drawProds();
   }
   else if(t.id==='pdel'&&confirm('Delete this product?')){db.collection('products').doc(pedit).delete().catch(e=>alert(e.message));pedit=null;drawProds()}
@@ -1059,7 +1066,9 @@ async function loadRoute(){
   try{const d=await userDoc().collection('routeorder').doc(routeKey()).get();rt.ids=d.exists?d.data().ids:null}catch(e){}
   if(rt.ids)applySaved();
 }
-const VER='v1.29';
+let bcShow=false,pbarPre='';try{bcShow=localStorage.getItem('chillo_bc')==='1'}catch(e){}
+try{$('bcs').value=bcShow?'1':'0';$('bcs').onchange=e=>{bcShow=e.target.value==='1';localStorage.setItem('chillo_bc',e.target.value);if(pedit===null)try{drawList()}catch(x){}}}catch(e){}
+const VER='v1.30';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={

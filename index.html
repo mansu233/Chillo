@@ -40,7 +40,7 @@ button{background:var(--navy);color:#fff;border:0;font-weight:600;font-size:.8re
 button:active{opacity:.85}
 button.alt{background:transparent;color:var(--hl);border:1.5px solid var(--hl)}
 button.sm,.sm{width:auto;min-width:130px;display:inline-block;padding:10px 22px;margin:6px 0 4px}
-#cdel,#pdel,#odel,#rclr,#creset{color:var(--bad);border-color:#E9B4AD}
+#cdel,#pdel,#odel,#rclr,#creset,#mdel{color:var(--bad);border-color:#E9B4AD}
 label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--hl)}
 .big{font-size:2.6rem;font-weight:800;margin:2px 0 10px;color:var(--hl)}
 .row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
@@ -293,18 +293,19 @@ function drawMembers(){
   if(m){
     const p=m.perms||{};
     $('mem').innerHTML=`<a id="back" style="margin:0">Back to members</a><h2>${esc(m.name)}</h2>
-    <div class="muted">${esc(m.email||'')}</div><label>Branch</label><select id="mbr"><option value="">No branch</option>${branchOpts(m.branch)}</select>
+    <div class="muted">${esc(m.email||'')}<br>To change an email, add a new member.</div><label>Name</label><input id="mnm" value="${esc(m.name)}"><label>Branch</label><select id="mbr"><option value="">No branch</option>${branchOpts(m.branch)}</select>
     <div class="row"><label for="act">Account active</label><input id="act" type="checkbox" ${m.active!==false?'checked':''}></div>`+
     Object.keys(PERMS).map(c=>`<h3>${c}</h3>`+PERMS[c].map(([k,t])=>`<div class="row"><label for="p_${k}">${t}</label><input id="p_${k}" data-k="${k}" type="checkbox" ${p[k]?'checked':''}></div>`).join('')).join('')+
     `<p><button id="pall" class="alt">Switch all on</button><button id="pnone" class="alt">Switch all off</button></p>
-    <div class="err" id="mmsg"></div><button id="msave">Save</button><button id="mreset" class="alt">Send password reset email</button><button id="mord" class="alt">View orders</button><button id="mdays" class="alt">Closed days</button>`;
+    <div class="err" id="mmsg"></div><button id="msave">Save</button><button id="mreset" class="alt">Send password reset email</button><button id="mord" class="alt">View orders</button><button id="mdays" class="alt">Closed days</button><button id="mdel" class="alt">Delete member</button>`;
     return;
   }
   $('mem').innerHTML=`<h2>Add member</h2>
   <label>Name</label><input id="mname"><label>Email</label><input id="memail" type="email">
   <label>Branch</label><select id="mbranch"><option value="">No branch</option>${branchOpts()}</select><label>Starting 6-digit password</label><input id="mpass" type="password" inputmode="numeric" maxlength="6">
   <div class="err" id="amsg"></div><button id="addm">Create member</button>
-  <h2>Members</h2>`+(members.map(m=>`<div class="row"><span>${esc(m.name)}<br><span class="muted">${esc(m.branch||'No branch')}${m.active===false?', inactive':''}</span></span><a data-m="${m.id}">Manage</a></div>`).join('')||'<div class="muted">No members yet.</div>');
+  <h2>Members</h2><input id="msearch" placeholder="Search members" value="${esc(msq)}"><div id="mlist"></div>`;
+  drawMList();
 }
 async function addMember(){
   const name=$('mname').value.trim(),email=$('memail').value.trim(),branch=$('mbranch').value.trim(),pw=$('mpass').value,msg=$('amsg');
@@ -317,7 +318,7 @@ async function addMember(){
     await db.collection('users').doc(c.user.uid).set({name,email,branch,role:'sales',active:true,perms:{}});
     ['mname','memail','mbranch','mpass'].forEach(i=>$(i).value='');
     msg.textContent='Member created. Tap Manage to switch on their permissions.';
-  }catch(e){msg.textContent='Could not create: '+(e.code||e.message)}
+  }catch(e){msg.textContent=e.code==='auth/email-already-in-use'?'This email already has a login. Delete it in Firebase, Authentication, Users, then add the member again.':'Could not create: '+(e.code||e.message)}
   finally{sec&&sec.delete()}
 }
 $('mem').onclick=async ev=>{
@@ -325,6 +326,7 @@ $('mem').onclick=async ev=>{
   if(t.id==='addm')return addMember();
   if(t.id==='mord')return showMemberOrders();
   if(t.id==='mdays')return showMemberDays();
+  if(t.id==='mdel')return delMember();
   if(t.dataset.ro){reopenDay(t.dataset.ro);return}
   ordActions(t,openId,showMemberOrders);
   if(t.dataset.m){openId=t.dataset.m;drawMembers();return}
@@ -332,7 +334,7 @@ $('mem').onclick=async ev=>{
   if(t.id==='pall'||t.id==='pnone'){document.querySelectorAll('#mem [data-k]').forEach(c=>c.checked=t.id==='pall');return}
   if(t.id==='msave'){
     const perms={};document.querySelectorAll('#mem [data-k]').forEach(c=>perms[c.dataset.k]=c.checked);
-    db.collection('users').doc(openId).update({active:$('act').checked,perms,branch:$('mbr').value}).then(()=>$('mmsg').textContent='Saved.').catch(e=>$('mmsg').textContent=e.message);
+    db.collection('users').doc(openId).update({active:$('act').checked,perms,branch:$('mbr').value,name:$('mnm').value.trim()||(members.find(x=>x.id===openId)||{}).name}).then(()=>{$('mmsg').textContent='Saved.';const h=document.querySelector('#mem h2');if(h&&$('mnm').value.trim())h.textContent=$('mnm').value.trim()}).catch(e=>$('mmsg').textContent=e.message);
   }
   if(t.id==='mreset'){
     const m=members.find(x=>x.id===openId);
@@ -1072,7 +1074,28 @@ let bcShow=false,pbarPre='';try{bcShow=localStorage.getItem('chillo_bc')==='1'}c
 try{$('bcs').value=bcShow?'1':'0';$('bcs').onchange=e=>{bcShow=e.target.value==='1';localStorage.setItem('chillo_bc',e.target.value);if(pedit===null)try{drawList()}catch(x){}}}catch(e){}
 const adjTag=r=>r.adj?' (adjusted '+(r.adj>0?'+':'')+r.adj+')':'';
 function applyAdj(r){const a=(st.cfg[r.key]||{}).adj||0;if(a&&!r.adj){r.adj=a;r.rem=Math.max(0,r3(r.rem+a));r.orig=Math.max(0,r3(r.orig+a))}return r}
-const VER='v1.32';
+let msq='';
+function drawMList(){
+  const q=msq.toLowerCase(),l=members.filter(m=>!q||((m.name||'')+' '+(m.branch||'')+' '+(m.email||'')).toLowerCase().includes(q));
+  $('mlist').innerHTML=l.map(m=>`<div class="row"><i class="dot"></i><span style="flex:1">${esc(m.name)}<br><span class="muted">${esc(m.branch||'No branch')}${m.active===false?', inactive':''}</span></span><a data-m="${m.id}">Manage</a></div>`).join('')||'<div class="muted">No members found.</div>';
+}
+$('mem').oninput=e=>{if(e.target.id==='msearch'){msq=e.target.value;drawMList()}};
+async function wipeCol(col){const q=await col.get();let b=db.batch(),n=0;for(const d of q.docs){b.delete(d.ref);if(++n>=400){await b.commit();b=db.batch();n=0}}if(n)await b.commit()}
+async function delMember(){
+  const m=members.find(x=>x.id===openId);if(!m)return;const msg=$('mmsg');
+  if(m.role==='admin'){msg.textContent='This member is an admin and cannot be deleted here.';return}
+  if(prompt('This permanently deletes '+m.name+' and ALL their data (sales, customers, credit, orders, closed days, reminders). It cannot be undone.\n\nType DELETE to confirm.')!=='DELETE')return;
+  msg.textContent='Deleting, please wait...';
+  try{
+    const u=db.collection('users').doc(m.id),cs=await u.collection('customers').get();
+    for(const c of cs.docs)await wipeCol(c.ref.collection('ledger'));
+    for(const n of ['customers','sales','photos','loadcfg','stock','orders','chkorders','reminders','routeorder'])await wipeCol(u.collection(n));
+    await wipeCol(db.collection('days').where('uid','==',m.id));
+    await wipeCol(db.collection('freezers').where('uid','==',m.id));
+    await u.delete();openId=null;drawMembers();
+  }catch(e){msg.textContent='Could not finish: '+e.message}
+}
+const VER='v1.33';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={

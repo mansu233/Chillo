@@ -620,14 +620,15 @@ async function readShot(file,say){
   const pr=pairRows(R,O,C,lh),pm=prodMap(),out=[];let wm=null;
   for(let i=0;i<pr.length;i++){
     if(pr[i].rem==null)continue;
-    let nameGuess='';
+    let nameGuess='',crop='';
     if(!(pr[i].key&&resolveKey(pr[i].key,pm))){
       say('Reading a new product name...');
       if(!wm){wm=await Tesseract.createWorker('eng');await wm.setParameters({tessedit_pageseg_mode:'6'})}
       const ya=Math.max(0,R[i].y-.6*lh),yb=Math.min(H,i+1<R.length?R[i+1].y-.5*lh:R[i].y+4*lh);
+      try{crop=cut(xl,ya,wt,yb-ya,1,false).toDataURL('image/jpeg',0.75)}catch(e){}
       nameGuess=(await wm.recognize(cut(xl+.16*wt,ya,.44*wt,yb-ya,3,false))).data.text.replace(/\s+/g,' ').trim();
     }
-    out.push({key:pr[i].key,orig:pr[i].orig,rem:pr[i].rem,nameGuess});
+    out.push({key:pr[i].key,orig:pr[i].orig,rem:pr[i].rem,nameGuess,crop});
   }
   await w.terminate();if(wm)await wm.terminate();
   return out;
@@ -637,7 +638,7 @@ async function readAndMatch(f,say){
   for(const r of raw){
     const res=r.key?resolveKey(r.key,pm):null;
     if(res){if(seen[res.key])continue;seen[res.key]=1;rows.push({key:res.key,name:pm[res.key].name,orig:r.orig,rem:r.rem,same:r.orig===r.rem,how:res.how})}
-    else unk.push({rawKey:r.key,orig:r.orig,rem:r.rem,nameGuess:r.nameGuess});
+    else unk.push({rawKey:r.key,orig:r.orig,rem:r.rem,nameGuess:r.nameGuess,crop:r.crop});
   }
   st.rows=rows;st.unk=unk;
 }
@@ -651,7 +652,7 @@ function drawReview(){
   const inp=(i,f,v,w)=>`<input data-i="${i}" data-f="${f}" type="number" step="any" value="${v}" style="width:${w}px;margin:0;padding:6px">`;
   $('sb').innerHTML=`<h3>Check the numbers</h3><p class="muted">${st.rows.length} products read. Fix any mistakes, then tap Use these numbers.</p>`+
    st.rows.map((r,i)=>`<div class="row"><span>${esc(r.name)}${r.how==='snap'?'<br><span class="muted">Code corrected</span>':''}</span><span style="display:flex;gap:6px">${two&&!r.same?inp(i,'orig',r.orig,64)+inp(i,'rem',r.rem,64):inp(i,'rem',r.rem,84)}</span></div>`).join('')+
-   (st.unk.length?`<h3>Not matched (${st.unk.length})</h3><p class="muted">Choose the product, or add it as a new one with its name.</p>`+st.unk.map((u,j)=>`<div class="row" style="flex-wrap:wrap"><select data-us="${j}" style="margin:0 0 6px">${opt}</select><input data-un="${j}" placeholder="Name of the new product" value="${esc(u.nameGuess||'')}" style="margin:0 8px 6px 0;flex:1"><input data-ur="${j}" type="number" step="any" value="${u.rem}" style="width:84px;margin:0 0 6px;padding:6px"></div>`).join(''):'')+
+   (st.unk.length?`<h3>Not matched (${st.unk.length})</h3><p class="muted">The picture shows the row from your screenshot that the app could not match. Choose the product it is, or add it as a new one with its name.</p>`+st.unk.map((u,j)=>`<div class="row" style="flex-wrap:wrap">${u.crop?'<img src="'+u.crop+'" style="width:100%;border-radius:6px;margin-bottom:6px;background:#fff">':''}<div class="muted" style="width:100%;margin-bottom:6px">${u.rawKey?'Code read: '+(u.rawKey.startsWith('SA')?'FG-SAM-'+u.rawKey.slice(2):'FG-ICE-'+u.rawKey.slice(3)):'The code could not be read'}</div><select data-us="${j}" style="margin:0 0 6px">${opt}</select><input data-un="${j}" placeholder="Name of the new product" value="${esc(u.nameGuess||'')}" style="margin:0 8px 6px 0;flex:1"><input data-ur="${j}" type="number" step="any" value="${u.rem}" style="width:84px;margin:0 0 6px;padding:6px"></div>`).join(''):'')+
    missingHtml()+'<p></p><button id="sok">Use these numbers</button><button id="sagain" class="alt">Cancel</button>';
 }
 function collectRows(){
@@ -1095,7 +1096,7 @@ async function delMember(){
     await u.delete();openId=null;drawMembers();
   }catch(e){msg.textContent='Could not finish: '+e.message}
 }
-const VER='v1.33';
+const VER='v1.34';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={

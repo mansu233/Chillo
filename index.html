@@ -15,20 +15,22 @@ body{margin:0;font:1rem/1.45 Cairo,system-ui,"Segoe UI",Roboto,sans-serif;color:
 header{position:sticky;top:0;z-index:20;background:#1A4C90;color:#fff;display:grid;grid-template-columns:48px 1fr 48px;align-items:center;padding:calc(8px + env(safe-area-inset-top)) 8px 10px}
 #hback{grid-column:1}#htitle{grid-column:2}#hset{grid-column:3}
 #htitle{text-align:center;font-weight:600;letter-spacing:.16em;font-size:1rem}
-.hbtn{background:none!important;box-shadow:none!important;border:0;padding:0;margin:0;width:42px;height:42px;color:#fff;display:flex;align-items:center;justify-content:center;letter-spacing:0}
+.hbtn{background:none!important;box-shadow:none!important;border:0;padding:0;margin:0;width:2.6rem;height:2.6rem;color:#fff;display:flex;align-items:center;justify-content:center;letter-spacing:0}
 main{max-width:520px;margin:0 auto;padding:0 0 30px}
 main section{padding:20px 18px}
 #menu{padding:0}
 .mhero{background:linear-gradient(180deg,#1A4C90,#123F80);padding:4px 16px 70px;text-align:center;color:#fff}
-.av{width:92px;height:92px;border-radius:50%;background:#fff;margin:6px auto 10px;display:flex;align-items:center;justify-content:center}
+.hbtn svg{width:1.6rem;height:1.6rem}
+.av svg{width:62%;height:62%}
+.av{width:5.75rem;height:5.75rem;border-radius:50%;background:#fff;margin:6px auto 10px;display:flex;align-items:center;justify-content:center}
 .hname{font-size:1.2rem;font-weight:600;letter-spacing:.12em}.hmail{font-size:.85rem;opacity:.85;letter-spacing:.04em}
 .bal{background:var(--card);border-radius:8px;margin:-52px 22px 0;padding:14px 12px 10px;text-align:center;box-shadow:var(--shadow);position:relative}
 .bl{color:var(--cyan);font-size:.75rem;letter-spacing:.16em;font-weight:600}
 .bn{font-size:2rem;font-weight:800;color:var(--hl);margin:2px 0 6px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px 6px;padding:28px 16px 14px}
 .gi{background:none!important;box-shadow:none!important;color:var(--ink);border:0;padding:0;margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;font-weight:500;font-size:.8rem;letter-spacing:0;text-transform:none}
-.gc{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 5px 12px rgba(0,0,0,.2)}
-.gc svg{width:28px;height:28px}
+.gc{width:4rem;height:4rem;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 5px 12px rgba(0,0,0,.2)}
+.gc svg{width:1.75rem;height:1.75rem}
 .hidden{display:none!important}
 h1{font-size:2rem;margin:6px 0;font-weight:500}
 h2{font-size:1rem;margin:0 0 12px;letter-spacing:.12em;text-transform:uppercase;color:var(--hl);text-align:center}
@@ -44,18 +46,18 @@ button.sm,.sm{width:auto;min-width:130px;display:inline-block;padding:10px 22px;
 label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--hl)}
 .big{font-size:2.6rem;font-weight:800;margin:2px 0 10px;color:var(--hl)}
 .row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
-.dot{width:26px;height:26px;border-radius:50%;background:var(--navy);flex:none}
+.dot{width:1.6rem;height:1.6rem;border-radius:50%;background:var(--navy);flex:none}
 .row:nth-child(even)>.dot{background:var(--cyan)}
 .bar{height:10px;background:var(--line);border-radius:5px;overflow:hidden;margin-top:6px}
 .bar i{display:block;height:100%;background:var(--cyan);border-radius:5px}
 .muted{opacity:.65;font-size:.875rem}.err{color:var(--bad);font-size:.875rem;min-height:18px}
 a{color:var(--hl);background:rgba(29,177,232,.14);padding:4px 11px;border-radius:999px;font-size:.8125rem;font-weight:700;margin-left:8px;cursor:pointer;white-space:nowrap}
-input[type=checkbox]{width:24px;height:24px;margin:0;flex:none;accent-color:#16478A}
+input[type=checkbox]{width:1.5rem;height:1.5rem;margin:0;flex:none;accent-color:#16478A}
 details summary{cursor:pointer;font-weight:600}
 nav{display:none}
 .lg-top{background:linear-gradient(180deg,#1A4C90,#123F80);color:#fff;text-align:center;padding:calc(54px + env(safe-area-inset-top)) 20px 44px}
 .lg-top h1{letter-spacing:.06em;margin:0 0 26px}
-.lg-logo{width:150px;height:150px;border-radius:50%;background:#fff;margin:0 auto;display:flex;align-items:center;justify-content:center}
+.lg-logo{width:9.4rem;height:9.4rem;border-radius:50%;background:#fff;margin:0 auto;display:flex;align-items:center;justify-content:center}
 .hero{text-align:center;padding:28px 24px 30px}
 .hero input{text-align:center}
 .amtbig{font-size:2rem;font-weight:800;text-align:right;color:var(--hl);padding:12px 14px}
@@ -64,11 +66,12 @@ nav{display:none}
 .pills{display:flex;gap:6px;margin:0 0 14px}
 .pills button{margin:0;flex:1;border-radius:8px 8px 0 0;background:#8995A8;font-size:.72rem;padding:12px 4px;letter-spacing:.1em}
 .pills button.on{background:var(--cyan)}
-.sav{width:72px;height:72px;margin:0 auto 6px;border:2px solid var(--line)}
+.sav{width:4.5rem;height:4.5rem;margin:0 auto 6px;border:2px solid var(--line)}
 .mcard{border:1px solid var(--line);border-left:5px solid var(--line);border-radius:6px;padding:12px 14px;margin:0 0 14px}
 .mcard.ok{border-left-color:#1E8E4E}
 .mok{color:#1E8E4E;font-weight:600;margin:6px 0 8px}
-#upd{position:fixed;left:12px;right:12px;bottom:12px;z-index:60;background:var(--navy);color:#fff;border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow)}
+#upd{position:fixed;left:12px;right:12px;bottom:12px;z-index:60;background:var(--navy);color:#fff;border-radius:8px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;box-shadow:var(--shadow)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#16478A;color:#fff;padding:10px 16px;border-radius:20px;z-index:70;font-size:.9rem;box-shadow:var(--shadow);white-space:nowrap}
 </style></head><body>
 
 <div id="login" class="hidden"><div class="lg-top"><h1>WELCOME!</h1><div class="lg-logo"><img src="icon.svg" width="112" height="112" alt=""></div></div>
@@ -117,7 +120,8 @@ nav{display:none}
 <nav><button data-t="home" class="on">Month</button><button data-t="add">Add sale</button><button data-t="set">Settings</button><button data-t="mem" id="tmem" class="hidden">Members</button><button data-t="prod" id="tprod" class="hidden">Products</button><button data-t="cust" id="tcust" class="hidden">Customers</button><button data-t="stock" id="tstock" class="hidden">Stock</button><button data-t="lsetup" id="tlsetup" class="hidden">Load setup</button><button data-t="rem" id="trem" class="hidden">Reminders</button><button data-t="team" id="tteam" class="hidden">Team</button><button data-t="close" id="tclose" class="hidden">Close day</button></nav>
 </div>
 
-<div id="upd" class="hidden"><span id="updt" style="flex:1"></span><button id="updb" class="sm" style="background:#fff;color:#16478A;margin:0;min-width:90px">Update</button></div>
+<div id="toast" class="hidden"></div>
+<div id="upd" class="hidden"><span id="updt" style="flex:1"></span><button id="updb" class="sm" style="background:#fff;color:#16478A;margin:0;min-width:90px">Update</button><button id="updl" class="sm" style="background:transparent;color:#fff;border:1px solid #fff;margin:0;min-width:90px">Next time</button></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -143,6 +147,7 @@ const sales=()=>userDoc().collection('sales');
 
 function show(id){['login','wait','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
 function tab(t){
+  curTab=t;
   ['home','add','set','mem','prod','cust','stock','lsetup','rem','team','menu','close'].forEach(x=>$(x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   if(t==='lsetup')drawSetup();
@@ -151,7 +156,7 @@ function tab(t){
   if(t==='home')try{render()}catch(e){}
   if(t==='menu')drawMenu();
   if(t==='close')drawClose();
-  $('htitle').textContent=TT[t]||'CHILLO';$('hback').classList.toggle('hidden',t==='menu');$('hset').classList.toggle('hidden',t==='set');window.scrollTo(0,0);
+  $('htitle').textContent=TT[t]||'CHILLO';$('hback').classList.toggle('hidden',t==='menu');$('hset').classList.toggle('hidden',t==='set');window.scrollTo(0,0);navNote();
 }
 function reset(){editId=null;$('amt').value='';$('note').value='';$('aerr').textContent='';$('date').value=ymd(new Date());$('save').textContent='Save sale'}
 
@@ -181,7 +186,7 @@ function start(){
   unsub&&unsub();
   unsub=sales().where('date','>=',a).where('date','<=',b).orderBy('date','desc')
     .onSnapshot(s=>{entries=s.docs.map(d=>({id:d.id,...d.data()}));render()});
-  reset();$('tg').value=me.target||'';fillAreas();applyAccess();tab('menu');loadClosed();if(me.role==='admin')watchMembers();if(can('prod.view')||can('stock.use')||can('load.setup'))watchProducts();if(can('cust.view'))watchCusts();if(can('rem.use'))watchRems();if(can('stock.use')||can('load.setup'))loadStock();
+  reset();$('tg').value=me.target||'';fillAreas();applyAccess();tab('menu');loadClosed();if(me.role==='admin')watchMembers();if(can('prod.view')||can('stock.use')||can('load.setup'))watchProducts();if(can('cust.view')){watchCusts();loadMyList()}if(can('rem.use'))watchRems();if(can('stock.use')||can('load.setup'))loadStock();
 }
 
 function render(){
@@ -289,6 +294,7 @@ function watchMembers(){
   db.collection('users').onSnapshot(s=>{members=s.docs.map(d=>({id:d.id,...d.data()})).filter(m=>m.id!==uid);if(!openId)drawMembers();if(me.role==='admin')fillBranches()});
 }
 function drawMembers(){
+  navNote();
   const m=members.find(x=>x.id===openId);
   if(m){
     const p=m.perms||{};
@@ -357,6 +363,7 @@ function drawList(){
    <span>${admin?'<a data-pe="'+esc(p.id)+'">Edit</a><a data-pd="'+esc(p.id)+'">Delete</a>':''}</span></div>`).join('');
 }
 function drawProds(){
+  navNote();
   const admin=me.role==='admin',cats=[...new Set(prods.map(p=>p.category).filter(Boolean))].sort();
   if(pedit!==null){
     const p=prods.find(x=>x.id===pedit)||{};
@@ -447,17 +454,20 @@ function isToday(c){
   return (c.type==='fixed'&&(c.days||[]).includes(new Date().getDay()))||(c.type==='call'&&c.calledAt&&c.calledAt>(c.lastVisit||''));
 }
 function drawCust(){
-  if(cmode==='edit')return drawEdit();if(cmode==='view')return drawView();if(cmode==='route')return drawRoute();
+  navNote();
+  if(cmode==='edit')return drawEdit();if(cmode==='view')return drawView();if(cmode==='route')return drawRoute();if(cmode==='arrange')return drawArrange();
   $('cust').innerHTML=`<h2>Customers</h2><input id="cq" placeholder="Search shop, owner or phone" value="${esc(cq)}">
   <label>Show</label><select id="cs">${[['all','All'],['today',"Today's route"],...DAYS.map(([d,t])=>['d'+d,t]),['random','Random days'],['call','On call'],['missed','Missed visit this week'],['owes','Owes money'],['overdue','Overdue credit']].map(([v,t])=>`<option value="${v}" ${v===cshow?'selected':''}>${t}</option>`).join('')}</select>
-  <label>Order</label><select id="co2"><option value="az">A to Z</option><option value="near" ${csort==='near'?'selected':''}>Nearest first</option><option value="credit" ${csort==='credit'?'selected':''}>Highest credit first</option></select>
-  ${can('cust.add')?'<button id="cadd">Add customer</button>':''}${can('route.use')?'<button id="crt" class="alt">Create route from this list</button>':''}<div id="clist"></div>`;
+  <label>Order</label><select id="co2">${myList?'<option value="mine" '+(csort==='mine'?'selected':'')+'>My list</option>':''}<option value="az" ${csort==='az'?'selected':''}>A to Z</option><option value="near" ${csort==='near'?'selected':''}>Nearest first</option><option value="credit" ${csort==='credit'?'selected':''}>Highest credit first</option></select>
+  ${can('cust.add')?'<button id="cadd">Add customer</button>':''}${can('route.use')?'<button id="crt" class="alt">Create route from this list</button>':''}<button id="cmylist" class="alt">${myList?'Change my list':'Arrange my list'}</button><div id="clist"></div>`;
   drawCList();
 }
 function drawCList(){
   const q=cq.toLowerCase();
   let l=cs.filter(c=>(!q||((c.name||'')+' '+(c.owner||'')+' '+(c.phone||'')).toLowerCase().includes(q))&&
     (cshow==='all'||(cshow==='today'&&isToday(c))||(cshow[0]==='d'&&c.type==='fixed'&&(c.days||[]).includes(+cshow.slice(1)))||(cshow==='random'&&c.type==='random')||(cshow==='call'&&c.type==='call')||(cshow==='missed'&&missed(c))||(cshow==='owes'&&(c.bal||0)>0)||(cshow==='overdue'&&isOver(c))));
+  l.sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base',numeric:true}));
+  if(csort==='mine'&&myList){const ps=id=>{const i=myList.indexOf(id);return i<0?1e6:i};l.sort((a,b)=>ps(a.id)-ps(b.id))}
   if(csort==='credit')l.sort((a,b)=>(b.bal||0)-(a.bal||0));
   if(csort==='near'&&pos)l.sort((a,b)=>(dist(a)??1e9)-(dist(b)??1e9));
   st.cl=l;
@@ -466,6 +476,7 @@ function drawCList(){
     <span class="muted">${d!=null?d.toFixed(1)+' km':''}${missed(c)?'<br>Missed':''}</span></div>`}).join('');
 }
 function drawView(){
+  navNote();
   const c=cs.find(x=>x.id===cid);if(!c){cmode='list';return drawCust()}
   const nav=c.lat!=null?`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`:(c.link||'');
   const typ=c.type==='fixed'?'Fixed day: '+(c.days||[]).map(dn).join(', '):c.type==='call'?'On call':'Random days';
@@ -479,7 +490,8 @@ function drawView(){
   ${can('cust.edit')?'<button id="cedit" class="alt">Edit</button>':''}`;loadMedia(c);loadLedger(c);
 }
 function drawEdit(){
-  const c=cs.find(x=>x.id===cid)||{type:'fixed',days:[]};ed={lat:c.lat??null,lng:c.lng??null,link:c.link||''};
+  navNote();
+  const c=cs.find(x=>x.id===cid)||{type:'fixed',days:[new Date().getDay()]};ed={lat:c.lat??null,lng:c.lng??null,link:c.link||''};
   $('cust').innerHTML=`<h2>${cid?'Edit customer':'Add customer'}</h2>
   <label>Shop name</label><input id="cn" value="${esc(c.name)}"><label>Owner name</label><input id="cow" value="${esc(c.owner)}">
   <label>Phone</label><input id="cph" type="tel" value="${esc(c.phone)}">
@@ -487,7 +499,7 @@ function drawEdit(){
   <label>Visit type</label><select id="cty">${[['fixed','Fixed day'],['random','Random days'],['call','On call']].map(([v,t])=>`<option value="${v}" ${v===c.type?'selected':''}>${t}</option>`).join('')}</select>
   <label>Visit days (for fixed day)</label><div style="margin:6px 0 12px">${DAYS.map(([d,t])=>`<label style="margin-right:12px"><input type="checkbox" data-d="${d}" style="display:inline-block;vertical-align:middle" ${(c.days||[]).includes(d)?'checked':''}> ${t}</label>`).join('')}</div>
   <label>Location</label><button id="cgps" class="alt">Use my GPS here</button>
-  <input id="clk" placeholder="Or paste a Google Maps or WhatsApp location link" value="${esc(c.link)}"><div class="muted" id="cloc">${ed.lat!=null?'Location saved':'No location yet'}</div>
+  <input id="clk" placeholder="Or paste a Google Maps or WhatsApp location link" value="${esc(c.link)}"><div class="muted" id="cloc">${ed.lat!=null?'Location saved':'No location yet'}</div>${c.prevLat!=null?'<a id="crestore" style="margin:0">Restore earlier location</a>':''}
   <label>Notes</label><input id="cno" value="${esc(c.notes)}"><div class="err" id="cmsg"></div>
   <button id="csave">Save</button><button id="ccancel" class="alt">Cancel</button>${cid&&can('cust.delete')?'<button id="cdel" class="alt">Delete customer</button>':''}`;
 }
@@ -496,6 +508,17 @@ function getPos(cb){
 }
 $('cust').onclick=ev=>{
   const t=ev.target,row=t.closest('[data-v]');
+  if(t.dataset.au2||t.dataset.ad2){const id=t.dataset.au2||t.dataset.ad2,i=arr.ids.indexOf(id),j=t.dataset.au2?i-1:i+1;if(i>=0&&j>=0&&j<arr.ids.length){[arr.ids[i],arr.ids[j]]=[arr.ids[j],arr.ids[i]];redrawArr()}return}
+  const ap=t.closest('[data-ap]');if(ap){const id=ap.dataset.ap,i=arr.ids.indexOf(id);if(i>=0)arr.ids.splice(i,1);else arr.ids.push(id);redrawArr();return}
+  if(t.id==='cmylist'){arr={ids:(myList||[]).filter(id=>cs.some(c=>c.id===id))};cmode='arrange';drawArrange();return}
+  if(t.id==='abk'){cmode='list';drawCust();return}
+  if(t.id==='aclear'){arr.ids=[];redrawArr();return}
+  if(t.id==='asave'){
+    const col=userDoc().collection('routeorder').doc('mylist');
+    if(arr.ids.length){myList=[...arr.ids];csort='mine';col.set({ids:myList}).catch(e=>alert(e.message))}
+    else{myList=null;csort='az';col.delete().catch(()=>{})}
+    cmode='list';drawCust();return;
+  }
   if(t.dataset.go){t.dataset.go.startsWith('tel:')?location.href=t.dataset.go:window.open(t.dataset.go,'_blank');return}
   if(row){cid=row.dataset.v;cmode='view';drawView();return}
   if(t.id==='cadd'){cid=null;cmode='edit';drawEdit()}
@@ -536,12 +559,18 @@ $('cust').onclick=ev=>{
   else if(t.id==='fzsave')saveFreezer(cs.find(x=>x.id===cid));
   else if(t.id==='fzcancel')loadMedia(cs.find(x=>x.id===cid));
   else if(t.dataset.fd){if(confirm('Remove this freezer record?'))db.collection('freezers').doc(idOf(t.dataset.fd)).delete().then(()=>loadMedia(cs.find(x=>x.id===cid))).catch(e=>alert(e.message))}
-  else if(t.id==='cgps')getPos(p=>{ed.lat=p.lat;ed.lng=p.lng;$('cloc').textContent='GPS location captured'});
+  else if(t.id==='cgps'){
+    if(ed.lat!=null&&!confirm('This customer already has a saved location. Replace it with your current GPS position?'))return;
+    getPos(p=>{ed.prev={lat:ed.lat,lng:ed.lng};ed.lat=p.lat;ed.lng=p.lng;$('cloc').innerHTML='GPS location captured. <a id="cundo">Undo</a>'});
+  }
+  else if(t.id==='cundo'){if(ed.prev){ed.lat=ed.prev.lat;ed.lng=ed.prev.lng;ed.prev=null}$('cloc').textContent=ed.lat!=null?'Previous location restored':'No location yet'}
+  else if(t.id==='crestore'){const c0=cs.find(x=>x.id===cid);if(c0&&c0.prevLat!=null){ed.lat=c0.prevLat;ed.lng=c0.prevLng;$('cloc').textContent='Earlier saved location restored. Tap Save to keep it.'}}
   else if(t.id==='cdel')delCust();
   else if(t.id==='csave'){
     const name=$('cn').value.trim();if(!name){$('cmsg').textContent='Enter the shop name.';return}
     const data={name,owner:$('cow').value.trim(),phone:$('cph').value.trim(),area:$('car').value,type:$('cty').value,notes:$('cno').value.trim(),
       days:[...document.querySelectorAll('#cust [data-d]:checked')].map(c=>+c.dataset.d),lat:ed.lat,lng:ed.lng,link:$('clk').value.trim()};
+    {const c0=cs.find(x=>x.id===cid);if(c0&&c0.lat!=null&&(c0.lat!==ed.lat||c0.lng!==ed.lng)){data.prevLat=c0.lat;data.prevLng=c0.lng}}
     (cid?custs().doc(cid).update(data):custs().add({...data,lastVisit:'',created:stamp()})).catch(e=>alert(e.message));
     cmode=cid?'view':'list';cmode==='view'?drawView():drawCust();
   }
@@ -684,6 +713,7 @@ let fzPhoto='';
 let rt={list:[],skip:[]},rems=[];
 const hav=(p,c)=>{const r=x=>x*Math.PI/180,dl=r(c.lat-p.lat),dg=r(c.lng-p.lng),a=Math.sin(dl/2)**2+Math.cos(r(p.lat))*Math.cos(r(c.lat))*Math.sin(dg/2)**2;return 6371*2*Math.asin(Math.sqrt(a))};
 function drawRoute(){
+  navNote();
   const l=rt.list,parts=[];
   for(let i=0;i<l.length;i+=10){
     const ch=l.slice(i,i+10),dest=ch[ch.length-1],wp=ch.slice(0,-1).map(c=>c.lat+','+c.lng).join('|');
@@ -762,7 +792,7 @@ function scanBarcode(cb){
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:#000;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px';
   ov.innerHTML='<video playsinline muted style="width:100%;max-width:420px;border-radius:12px"></video><div style="color:#fff;font-size:14px" id="sm">Point the camera at the barcode</div><button class="alt" id="sx" style="max-width:420px">Cancel</button>';
-  document.body.appendChild(ov);
+  document.body.appendChild(ov);ov.classList.add('ovl');
   const v=ov.querySelector('video'),msg=t=>{ov.querySelector('#sm').textContent=t};let stop=false,stream=null,zr=null;
   const end=r=>{if(stop)return;stop=true;if(stream)stream.getTracks().forEach(t=>t.stop());if(zr)try{zr.reset()}catch(e){}ov.remove();if(r)cb(r)};
   ov.querySelector('#sx').onclick=()=>end();
@@ -786,7 +816,7 @@ function editPhoto(file,cb){
     const ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px';
     ov.innerHTML='<canvas width="320" height="240" style="touch-action:none;background:#000"></canvas><div style="color:#fff;font-size:14px">Drag to move, pinch or use the slider to zoom</div><input type="range" min="1" max="4" step="0.05" value="1" style="width:320px"><div style="display:flex;gap:8px;width:320px"><button class="alt" id="er">Rotate</button><button class="alt" id="ec">Cancel</button><button id="es">Use photo</button></div>';
-    document.body.appendChild(ov);
+    document.body.appendChild(ov);ov.classList.add('ovl');
     const cv=ov.querySelector('canvas'),sl=ov.querySelector('input'),ctx=cv.getContext('2d');
     const base=()=>{const w=rot%2?img.height:img.width,h=rot%2?img.width:img.height;return Math.max(W/w,H/h)};
     const draw=(c,k)=>{c.fillStyle='#000';c.fillRect(0,0,W*k,H*k);c.save();c.translate(W*k/2+ox*k,H*k/2+oy*k);c.rotate(rot*Math.PI/2);const sc=base()*z*k;c.scale(sc,sc);c.drawImage(img,-img.width/2,-img.height/2);c.restore()};
@@ -806,11 +836,15 @@ function editPhoto(file,cb){
     ov.querySelector('#ec').onclick=()=>ov.remove();
     ov.querySelector('#es').onclick=()=>{const o=document.createElement('canvas');o.width=960;o.height=720;draw(o.getContext('2d'),3);ov.remove();cb(o.toDataURL('image/jpeg',0.72))};
   };
+  img.onerror=()=>alert('This photo could not be opened. Try another photo, or use the camera.');
   img.src=URL.createObjectURL(file);
 }
 function pickImage(camera,cb){
-  const i=document.createElement('input');i.type='file';i.accept='image/*';if(camera)i.capture='environment';
-  i.onchange=()=>{if(i.files[0])editPhoto(i.files[0],cb)};i.click();
+  const i=document.createElement('input');i.type='file';i.accept='image/*';if(camera)i.capture='environment';i.style.display='none';
+  document.body.appendChild(i);
+  i.onchange=()=>{const f=i.files[0];i.remove();if(f)editPhoto(f,cb)};
+  i.addEventListener('cancel',()=>i.remove());
+  i.click();
 }
 async function loadMedia(c){
   const id=c.id,ph=can('cust.photo');let shop=null,fz=[];
@@ -938,7 +972,7 @@ function drawMenu(){
 function updMenu(){const t=entries.reduce((a,e)=>a+e.amount,0);$('mtot').textContent=can('sales.report')?fmt(t)+' SAR':'-'}
 $('mgrid').onclick=e=>{const g=e.target.closest('[data-g]');if(g)document.querySelector('nav button[data-t="'+g.dataset.g+'"]').click()};
 $('mbtn').onclick=()=>document.querySelector('nav button[data-t=add]').click();
-$('hback').onclick=()=>{reset();tab('menu')};
+$('hback').onclick=()=>{if(!goBack()){reset();tab('menu')}};
 $('hset').onclick=()=>document.querySelector('nav button[data-t=set]').click();
 $('kp').onclick=e=>{
   const k=e.target.dataset.k;if(!k)return;let v=$('amt').value;
@@ -1036,9 +1070,11 @@ $('brl').onclick=e=>{
 async function checkUpdate(){
   try{
     const r=await fetch('index.html?cb='+Date.now(),{cache:'no-store'}),m=(await r.text()).match(/const VER='(v[\d.]+)'/);
-    if(m&&m[1]!==VER){$('updt').textContent='New version '+m[1]+' is ready.';$('upd').classList.remove('hidden')}
+    let sk='';try{sk=sessionStorage.getItem('chillo_skip')}catch(e){}
+    if(m&&m[1]!==VER&&sk!==m[1]){$('updt').textContent='New version '+m[1]+' is ready.';$('updt').dataset.v=m[1];$('upd').classList.remove('hidden')}
   }catch(e){}
 }
+$('updl').onclick=()=>{try{sessionStorage.setItem('chillo_skip',$('updt').dataset.v||'')}catch(e){}$('upd').classList.add('hidden')};
 $('updb').onclick=async()=>{
   try{for(const k of await caches.keys())await caches.delete(k);for(const g of await navigator.serviceWorker.getRegistrations())await g.unregister()}catch(e){}
   location.reload();
@@ -1096,7 +1132,61 @@ async function delMember(){
     await u.delete();openId=null;drawMembers();
   }catch(e){msg.textContent='Could not finish: '+e.message}
 }
-const VER='v1.34';
+let curTab='menu',navStack=[],lastScr=null,navLock=false,exitT=0;
+function curScreen(){
+  const o={t:curTab};
+  if(curTab==='cust'){o.m=cmode;if(cmode==='view'||cmode==='edit')o.id=cid}
+  else if(curTab==='mem'){o.m=openId?'manage':'list';o.id=openId||''}
+  else if(curTab==='prod'){o.m=pedit===null?'list':'edit';o.id=pedit===null?'':pedit}
+  return o;
+}
+const sameScr=(a,b)=>a.t===b.t&&a.m===b.m&&a.id===b.id;
+function navNote(){
+  if(navLock)return;const c=curScreen();
+  if(lastScr&&!sameScr(lastScr,c)){navStack.push(lastScr);if(navStack.length>40)navStack.shift()}
+  lastScr=c;
+}
+function restoreScr(p){
+  navLock=true;
+  try{
+    if(p.t==='menu')reset();
+    if(p.t==='cust'){cmode=(p.m==='route'||p.m==='arrange')?'list':(p.m||'list');if(p.id)cid=p.id;if((cmode==='view'||cmode==='edit')&&!cs.find(x=>x.id===cid))cmode='list'}
+    if(p.t==='mem')openId=p.m==='manage'?p.id:null;
+    if(p.t==='prod')pedit=p.m==='edit'?p.id:null;
+    tab(p.t);
+    if(p.t==='cust')drawCust();else if(p.t==='mem')drawMembers();else if(p.t==='prod')drawProds();
+  }finally{navLock=false;lastScr=curScreen()}
+}
+function goBack(){
+  const o=document.querySelector('.ovl');
+  if(o){const b=o.querySelector('#ec,#sx');if(b)b.click();else o.remove();return true}
+  const cur=curScreen();
+  while(navStack.length){const p=navStack.pop();if(!sameScr(p,cur)){restoreScr(p);return true}}
+  return false;
+}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.add('hidden'),2300)}
+history.replaceState({root:1},'');history.pushState({trap:1},'');
+window.addEventListener('popstate',()=>{
+  if(Date.now()-exitT<2500&&curTab==='menu'&&!navStack.length&&!document.querySelector('.ovl')){history.back();return}
+  history.pushState({trap:1},'');
+  if(goBack())return;
+  if(curTab!=='menu'){reset();tab('menu');return}
+  exitT=Date.now();toast('Press back again to exit');
+});
+let myList=null,arr={ids:[]};
+const alpha=(a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base',numeric:true});
+async function loadMyList(){
+  try{const d=await userDoc().collection('routeorder').doc('mylist').get();
+    if(d.exists&&(d.data().ids||[]).length){myList=d.data().ids;csort='mine';if(cmode==='list')drawCust()}}catch(e){}
+}
+function drawArrange(){
+  navNote();
+  const all=[...cs].sort(alpha);
+  $('cust').innerHTML=`<a id="abk" style="margin:0">Back to customers</a><h2>Arrange my list</h2><p class="muted">Tap customers in the order you visit them. Each tap gives the next number. Tap a numbered customer to remove it, and use Up and Down to fine-tune. Customers you leave out go to the end, A to Z.</p><div class="muted">${arr.ids.length} of ${cs.length} numbered</div><button id="asave">Save my list</button><button id="aclear" class="alt">Clear numbers</button>`+
+   all.map(c=>{const i=arr.ids.indexOf(c.id);return `<div class="row" data-ap="${c.id}"><span class="dot" style="display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;font-weight:700;background:${i>=0?'var(--navy)':'var(--line)'}">${i>=0?i+1:''}</span><span style="flex:1"><b>${esc(c.name)}</b><br><span class="muted">${esc(c.area||'No area')}</span></span>${i>=0?`<span><a data-au2="${c.id}">Up</a><a data-ad2="${c.id}">Down</a></span>`:''}</div>`}).join('');
+}
+const redrawArr=()=>{const y=window.scrollY;drawArrange();window.scrollTo(0,y)};
+const VER='v1.37';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={

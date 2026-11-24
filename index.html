@@ -114,6 +114,7 @@ nav{display:none}
 <label>New 6-digit password</label><input id="np" type="password" inputmode="numeric" maxlength="6">
 <div class="err" id="pmsg"></div><button id="cp" class="alt">Change password</button>
 <label>Show barcode numbers</label><select id="bcs"><option value="0">Hide (default)</option><option value="1">Show</option></select>
+<label>Arrival popup (customer near you)</label><select id="arrs"><option value="0">Off</option><option value="50">When within 50 m (default)</option><option value="100">When within 100 m</option><option value="200">When within 200 m</option></select>
 <label>Text size</label><select id="fsz"><option value="0.9">Small</option><option value="1">Normal</option><option value="1.12">Large</option><option value="1.25">Extra large</option></select>
 <p class="muted">Chillo <span class="ver"></span></p><button id="out2">Sign out</button></section>
 </main>
@@ -186,7 +187,7 @@ function start(){
   unsub&&unsub();
   unsub=sales().where('date','>=',a).where('date','<=',b).orderBy('date','desc')
     .onSnapshot(s=>{entries=s.docs.map(d=>({id:d.id,...d.data()}));render()});
-  reset();$('tg').value=me.target||'';fillAreas();applyAccess();tab('menu');loadClosed();if(me.role==='admin')watchMembers();if(can('prod.view')||can('stock.use')||can('load.setup'))watchProducts();if(can('cust.view')){watchCusts();loadMyList()}if(can('rem.use'))watchRems();if(can('stock.use')||can('load.setup'))loadStock();
+  reset();$('tg').value=me.target||'';fillAreas();applyAccess();tab('menu');loadClosed();if(me.role==='admin')watchMembers();if(can('prod.view')||can('stock.use')||can('load.setup'))watchProducts();if(can('cust.view')){watchCusts();loadMyList();startArrival()}if(can('rem.use'))watchRems();if(can('stock.use')||can('load.setup'))loadStock();
 }
 
 function render(){
@@ -1186,7 +1187,45 @@ function drawArrange(){
    all.map(c=>{const i=arr.ids.indexOf(c.id);return `<div class="row" data-ap="${c.id}"><span class="dot" style="display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;font-weight:700;background:${i>=0?'var(--navy)':'var(--line)'}">${i>=0?i+1:''}</span><span style="flex:1"><b>${esc(c.name)}</b><br><span class="muted">${esc(c.area||'No area')}</span></span>${i>=0?`<span><a data-au2="${c.id}">Up</a><a data-ad2="${c.id}">Down</a></span>`:''}</div>`}).join('');
 }
 const redrawArr=()=>{const y=window.scrollY;drawArrange();window.scrollTo(0,y)};
-const VER='v1.37';
+let arrW=null,arrShown=new Set(),arrR=50;
+try{const v=localStorage.getItem('chillo_arr');arrR=v===null?50:+v}catch(e){}
+function arrStop(){if(arrW!=null){try{navigator.geolocation.clearWatch(arrW)}catch(e){}arrW=null}}
+function startArrival(){
+  arrStop();if(!arrR||!navigator.geolocation)return;
+  arrW=navigator.geolocation.watchPosition(onArrPos,e=>{if(e.code===1){arrStop();toast('Location is blocked, so the arrival popup is off.')}},{enableHighAccuracy:true,maximumAge:10000,timeout:30000});
+}
+function onArrPos(p){
+  if(p.coords.accuracy>100)return;
+  pos={lat:p.coords.latitude,lng:p.coords.longitude};
+  if($('app').classList.contains('hidden')||document.querySelector('.ovl'))return;
+  let best=null;
+  cs.forEach(c=>{
+    if(c.lat==null)return;const d=hav(pos,c)*1000;
+    if(d>arrR*2)arrShown.delete(c.id);
+    else if(d<=arrR&&!arrShown.has(c.id)&&(!best||d<best.d))best={c,d};
+  });
+  if(best){arrShown.add(best.c.id);arrPopup(best.c,Math.round(best.d))}
+}
+function arrPopup(c,d){
+  const t=ymd(new Date()),over=(c.bal||0)>0&&c.dueNext&&c.dueNext<t,rs=rems.filter(r=>!r.done&&r.cid===c.id);
+  const ov=document.createElement('div');ov.className='ovl';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:65;display:flex;align-items:flex-end;justify-content:center;padding:12px';
+  ov.innerHTML=`<div style="background:var(--card);color:var(--ink);border-radius:12px;padding:16px;width:100%;max-width:520px;box-shadow:var(--shadow)"><div class="bl">YOU ARE NEAR (${d} M)</div><h2 style="text-align:left;margin:4px 0;display:block">${esc(c.name)}</h2><div class="muted">${esc(c.area||'No area')}${c.owner?', '+esc(c.owner):''}</div>
+  ${(c.bal||0)>0?`<div class="row"><span>Credit owed</span><b style="color:#C0392B">${fmt(c.bal)} SAR${over?' (overdue)':''}</b></div>`:''}
+  <div class="row"><span>Last visit</span><b>${c.lastVisit?esc(c.lastVisit.replace('T',' ')):'Never'}</b></div>
+  ${rs.map(r=>`<div class="row"><span>Reminder</span><b>${esc(r.text)}</b></div>`).join('')}
+  <p></p><button id="arropen">Open customer</button><button id="arrvis" class="alt">Mark visited</button><button id="arrx" class="alt">Dismiss</button></div>`;
+  document.body.appendChild(ov);try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}
+  ov.onclick=e=>{
+    const id=e.target.id;
+    if(id==='arropen'){ov.remove();cid=c.id;cmode='view';tab('cust');drawCust()}
+    else if(id==='arrvis'){custs().doc(c.id).update({lastVisit:stamp()}).catch(x=>alert(x.message));ov.remove();toast('Marked visited')}
+    else if(id==='arrx'||e.target===ov)ov.remove();
+  };
+}
+try{const sel=$('arrs');sel.value=String(arrR);sel.onchange=e=>{arrR=+e.target.value;localStorage.setItem('chillo_arr',e.target.value);arrShown.clear();startArrival()}}catch(e){}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)arrStop();else if(me&&can('cust.view'))startArrival()});
+const VER='v1.38';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={

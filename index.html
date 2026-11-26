@@ -810,9 +810,18 @@ function scanBarcode(cb){
   }else msg('Scanning is not available on this browser. Type the number.');
 }
 
-function editPhoto(file,cb){
-  const img=new Image(),W=320,H=240;
-  img.onload=()=>{
+async function loadImg(file){
+  if(!file.size)throw new Error('empty');
+  try{return await createImageBitmap(file,{imageOrientation:'from-image'})}catch(e){}
+  try{return await createImageBitmap(file,{resizeWidth:2400,resizeQuality:'medium'})}catch(e){}
+  try{return await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(file)})}catch(e){}
+  return await new Promise((ok,no)=>{const r=new FileReader();r.onerror=no;r.onload=()=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=r.result};r.readAsDataURL(file)});
+}
+const photoErr=f=>!f.size?'This photo has no data on the phone yet (it may be stored only in the cloud). Open it in your Gallery app first, or use the camera.':'This photo could not be opened ('+(f.type||'unknown type')+', '+Math.round(f.size/1024)+' KB). '+(/hei[cf]/i.test(f.type+' '+f.name)?'It looks like a HEIC photo. In the camera settings choose JPEG, or pick another photo.':'Try another photo, or use the camera.');
+async function editPhoto(file,cb){
+  let img;try{img=await loadImg(file)}catch(e){alert(photoErr(file));return}
+  const W=320,H=240;
+  {
     let rot=0,z=1,ox=0,oy=0,d0=0,z0=1;const pts=new Map();
     const ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px';
@@ -836,9 +845,7 @@ function editPhoto(file,cb){
     ov.querySelector('#er').onclick=()=>{rot=(rot+1)%4;paint()};
     ov.querySelector('#ec').onclick=()=>ov.remove();
     ov.querySelector('#es').onclick=()=>{const o=document.createElement('canvas');o.width=960;o.height=720;draw(o.getContext('2d'),3);ov.remove();cb(o.toDataURL('image/jpeg',0.72))};
-  };
-  img.onerror=()=>alert('This photo could not be opened. Try another photo, or use the camera.');
-  img.src=URL.createObjectURL(file);
+  }
 }
 function pickImage(camera,cb){
   const i=document.createElement('input');i.type='file';i.accept='image/*';if(camera)i.capture='environment';i.style.display='none';
@@ -1225,7 +1232,7 @@ function arrPopup(c,d){
 }
 try{const sel=$('arrs');sel.value=String(arrR);sel.onchange=e=>{arrR=+e.target.value;localStorage.setItem('chillo_arr',e.target.value);arrShown.clear();startArrival()}}catch(e){}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)arrStop();else if(me&&can('cust.view'))startArrival()});
-const VER='v1.38';
+const VER='v1.39';
 try{const f=localStorage.getItem('chillo_fs')||'1';$('fsz').value=f;$('fsz').onchange=e=>{localStorage.setItem('chillo_fs',e.target.value);document.documentElement.style.setProperty('--fs',e.target.value)}}catch(e){}
 
 const IC={
